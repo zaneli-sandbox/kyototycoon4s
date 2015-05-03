@@ -2,8 +2,6 @@ package com.zaneli.kyototycoon4s
 
 import com.github.nscala_time.time.Imports.DateTime
 import java.net.URLEncoder
-import java.time.ZonedDateTime
-import java.time.format.DateTimeFormatter.RFC_1123_DATE_TIME
 import scala.util.{Failure, Success, Try}
 import scalaj.http.{Http, HttpRequest, HttpResponse}
 
@@ -18,34 +16,31 @@ class RestClient(private[this] val host: String, private[this] val port: Int) {
   private[this] val baseUrl = s"http://$host:$port"
 
   def getString(key: String): Try[(String, Option[DateTime])] = {
-    call(_.asString)(key, "get").map(res => (res.body, getXt(res)))
+    call(_.asString)(key, "get").map(res => (res.body, getXt(res.headers)))
   }
 
   def getBytes(key: String): Try[(Array[Byte], Option[DateTime])] = {
-    call(_.asBytes)(key, "get").map(res => (res.body, getXt(res)))
+    call(_.asBytes)(key, "get").map(res => (res.body, getXt(res.headers)))
   }
 
   def head(key: String): Try[(Long, Option[DateTime])] = {
-    def getContentLength(res: Response[_]): Option[Long] = {
-      res.headers.get("Content-Length").flatMap(xt => Try(xt.toLong).toOption)
-    }
     for {
       res <- call(_.asString)(key, "head")
       length <- Try(res.headers.get("Content-Length").get.toLong)
     } yield {
-      (length, getXt(res))
+      (length, getXt(res.headers))
     }
   }
 
-  def set(key: String, value: Value, xt: Option[Long] = None): Try[Unit] = {
+  def set(key: String, value: Value, xt: Option[DateTime] = None): Try[Unit] = {
     put(key, value, "set", xt).map(_ => ())
   }
 
-  def add(key: String, value: Value, xt: Option[Long] = None): Try[Unit] = {
+  def add(key: String, value: Value, xt: Option[DateTime] = None): Try[Unit] = {
     put(key, value, "add", xt).map(_ => ())
   }
 
-  def replace(key: String, value: Value, xt: Option[Long] = None): Try[Unit] = {
+  def replace(key: String, value: Value, xt: Option[DateTime] = None): Try[Unit] = {
     put(key, value, "replace", xt).map(_ => ())
   }
 
@@ -53,8 +48,8 @@ class RestClient(private[this] val host: String, private[this] val port: Int) {
     call(_.asString)(key, "delete").map(_ => ())
   }
 
-  private[this] def put(key: String, value: Value, mode: String, xt: Option[Long]): Try[Response[String]] = {
-    val headers = ("X-Kt-Mode", mode) +: xt.map(x => ("X-Kt-Xt", x.toString)).toSeq
+  private[this] def put(key: String, value: Value, mode: String, xt: Option[DateTime]): Try[Response[String]] = {
+    val headers = ("X-Kt-Mode", mode) +: xt.map(x => ("X-Kt-Xt", (x.getMillis / 1000).toString)).toSeq
     call(_.asString)(key, "put", value, headers)
   }
 
@@ -78,12 +73,6 @@ class RestClient(private[this] val host: String, private[this] val port: Int) {
       case res if res.isError => Failure(new KyotoTycoonException(res.code, res.headers.get("X-Kt-Error")))
       case res => Success(Response(res.code, res.body, res.headers))
     }
-  }
-
-  private[this] def getXt(res: Response[_]): Option[DateTime] = {
-    res.headers.get("X-Kt-Xt").flatMap(xt =>
-      Try(new DateTime(ZonedDateTime.parse(xt, RFC_1123_DATE_TIME).toInstant.toEpochMilli)).toOption
-    )
   }
 }
 

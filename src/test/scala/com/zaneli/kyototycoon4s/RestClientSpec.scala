@@ -138,8 +138,56 @@ class RestClientSpec extends FunSpec {
     }
   }
 
+  describe("set") {
+    it("set string value") {
+      val key = "test_key_for_set_string"
+      val value = "test_value_for_set_string"
+      assert(client.set(key, Value(value)).isSuccess)
+
+      val res = Http(url(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("set bytes value") {
+      val key = "test_key_for_set_bytes"
+      val value = "test_value_for_set_bytes".getBytes("UTF-8")
+      assert(client.set(key, Value(value)).isSuccess)
+
+      val res = Http(url(key)).asBytes
+      assert(res.isNotError)
+      assert(Arrays.equals(res.body, value))
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("set value with xt") {
+      val key = "test_key_for_set_with_xt"
+      val value = "test_value_for_set_with_xt"
+      val xt = DateTime.now.plusMinutes(10)
+      assert(client.set(key, Value(value), Some(xt)).isSuccess)
+
+      val res = Http(url(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).contains(xt.withMillisOfSecond(0)))
+    }
+    it("set value (key require url encode)") {
+      val key = "te st/key_for_set?=%~"
+      val value = "te st/value_for_set?=%~"
+      assert(client.set(key, Value(value)).isSuccess)
+
+      val res = Http(url(URLEncoder.encode(key, "UTF-8"))).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+  }
+
   private[this] def prepare(key: String, value: String, xt: Option[Long] = None): Unit = {
-    val req = Http(s"http://$host:$port/$key").postData(value).method("put")
+    val req = Http(url(key)).postData(value).method("put")
     xt.fold(req)(x => req.header("X-Kt-Xt", x.toString)).asString
+  }
+
+  private[this] def url(key: String): String = {
+    s"http://$host:$port/$key"
   }
 }
