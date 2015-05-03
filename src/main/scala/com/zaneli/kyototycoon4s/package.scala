@@ -11,4 +11,7 @@ package object kyototycoon4s {
       Try(new DateTime(ZonedDateTime.parse(xt, RFC_1123_DATE_TIME).toInstant.toEpochMilli)).toOption
     )
   }
+  private[kyototycoon4s] def getError(headers: Map[String, String]): Option[String] = {
+    headers.get("X-Kt-Error")
+  }
 }

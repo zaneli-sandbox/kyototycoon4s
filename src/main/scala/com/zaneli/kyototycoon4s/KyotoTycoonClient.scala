@@ -70,7 +70,7 @@ class RestClient(private[this] val host: String, private[this] val port: Int) {
       Http(url(key))
     }).method(method).headers(headers).timeout(connTimeoutMs = 5000, readTimeoutMs = 5000)
     Try(as(req)).flatMap {
-      case res if res.isError => Failure(new KyotoTycoonException(res.code, res.headers.get("X-Kt-Error")))
+      case res if res.isError => Failure(new KyotoTycoonException(res.code, getError(res.headers)))
       case res => Success(Response(res.code, res.body, res.headers))
     }
   }

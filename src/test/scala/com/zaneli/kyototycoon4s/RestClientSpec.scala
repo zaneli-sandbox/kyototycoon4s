@@ -301,6 +301,28 @@ class RestClientSpec extends FunSpec with BeforeAndAfter {
     }
   }
 
+  describe("delete") {
+    it("delete exist value") {
+      val key = asKey("test_key")
+      val value = "test_value"
+      prepare(key, value)
+      val res1 = Http(url(key)).asString
+      assert(res1.isNotError)
+      assert(res1.body === value)
+
+      assert(client.delete(key).isSuccess)
+      val res2 = Http(url(key)).asString
+      assert(res2.code === 404)
+      assert(getError(res2.headers).contains("DB: 7: no record: no record"))
+    }
+    it("delete not exist value") {
+      val key = asKey("test_key")
+      val res = client.delete(key)
+      assert(res.isFailure)
+      assert(res.failed.get.getMessage === "404: DB: 7: no record: no record")
+    }
+  }
+
   private[this] def prepare(key: String, value: String, xt: Option[Long] = None): Unit = {
     val req = Http(url(key)).postData(value).method("put")
     xt.fold(req)(x => req.header("X-Kt-Xt", x.toString)).asString
