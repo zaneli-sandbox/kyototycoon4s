@@ -246,6 +246,61 @@ class RestClientSpec extends FunSpec with BeforeAndAfter {
     }
   }
 
+  describe("replace") {
+    it("replace string value") {
+      val key = asKey("test_key_for_replace_string")
+      val value = "test_value_for_replace_string"
+      assert(client.set(key, Value("prepare")).isSuccess)
+      assert(client.replace(key, Value(value)).isSuccess)
+
+      val res = Http(url(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("replace bytes value") {
+      val key = asKey("test_key_for_replace_bytes")
+      val value = "test_value_for_replace_bytes".getBytes("UTF-8")
+      assert(client.set(key, Value("prepare")).isSuccess)
+      assert(client.replace(key, Value(value)).isSuccess)
+
+      val res = Http(url(key)).asBytes
+      assert(res.isNotError)
+      assert(Arrays.equals(res.body, value))
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("replace value with xt") {
+      val key = asKey("test_key_for_replace_with_xt")
+      val value = "test_value_for_replace_with_xt"
+      val xt = DateTime.now.plusMinutes(10)
+      assert(client.set(key, Value("prepare")).isSuccess)
+      assert(client.replace(key, Value(value), Some(xt)).isSuccess)
+
+      val res = Http(url(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).contains(xt.withMillisOfSecond(0)))
+    }
+    it("replace value (key require url encode)") {
+      val key = asKey("te st/key_for_replace?=%~")
+      val value = "te st/value_for_replace?=%~"
+      assert(client.set(key, Value("prepare")).isSuccess)
+      assert(client.replace(key, Value(value)).isSuccess)
+
+      val res = Http(url(URLEncoder.encode(key, "UTF-8"))).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("replace value (key not exists)") {
+      val key = asKey("test_key_for_replace_string")
+      val value = "test_value_for_replace_string"
+      val res = client.replace(key, Value(value))
+      assert(res.isFailure)
+      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
+    }
+  }
+
   private[this] def prepare(key: String, value: String, xt: Option[Long] = None): Unit = {
     val req = Http(url(key)).postData(value).method("put")
     xt.fold(req)(x => req.header("X-Kt-Xt", x.toString)).asString
