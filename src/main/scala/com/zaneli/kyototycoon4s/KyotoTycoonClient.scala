@@ -25,11 +25,16 @@ class RestClient(private[this] val host: String, private[this] val port: Int) {
     call(_.asBytes)(key, "get").map(res => (res.body, getXt(res)))
   }
 
-  def head(key: String): Try[(Option[Long], Option[DateTime])] = {
+  def head(key: String): Try[(Long, Option[DateTime])] = {
     def getContentLength(res: Response[_]): Option[Long] = {
       res.headers.get("Content-Length").flatMap(xt => Try(xt.toLong).toOption)
     }
-    call(_.asString)(key, "head").map(res => (getContentLength(res), getXt(res)))
+    for {
+      res <- call(_.asString)(key, "head")
+      length <- Try(res.headers.get("Content-Length").get.toLong)
+    } yield {
+      (length, getXt(res))
+    }
   }
 
   def set(key: String, value: Value, xt: Option[Long] = None): Try[Unit] = {
