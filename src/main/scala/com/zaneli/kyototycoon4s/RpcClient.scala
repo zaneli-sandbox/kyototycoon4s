@@ -9,8 +9,12 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
 
   private[this] case class Response(code: Int, body: String, headers: Map[String, String])
 
-  def void(cp: CommonParams = CommonParams.empty): Try[Unit] = {
+  def void(implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
     call("void", cp).map(_ => ())
+  }
+
+  def echo(params: (String, Any)*)(implicit cp: CommonParams = CommonParams.empty): Try[Seq[(String, String)]] = {
+    (call("echo", cp, params: _*).map(res => parseTsv(res.body)))
   }
 
   private[this] def url(procedure: String): String = {
@@ -38,6 +42,14 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
 
   private[this] def toTsv(params: Seq[(String, String)]): String = {
     params.map { case (k, v) => s"$k\t$v"}.mkString("\n")
+  }
+  private[this] def parseTsv(value: String): Seq[(String, String)] = {
+    value.lines.flatMap { line =>
+      line.split("\t") match {
+        case Array(k, v) => Some((k, v))
+        case _ => None
+      }
+    }.toList
   }
 }
 
