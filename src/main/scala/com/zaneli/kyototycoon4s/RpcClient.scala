@@ -31,6 +31,27 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     call("clear", cp).map(_ => ())
   }
 
+  def set(
+      key: String, value: String, xt: Option[Long] = None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    val params = Seq(("key", key), ("value", value)) ++ xt.map(("xt", _))
+    call("set", cp, params: _*).map(_ => ())
+  }
+
+  def add(
+      key: String, value: String, xt: Option[Long] = None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    val params = Seq(("key", key), ("value", value)) ++ xt.map(("xt", _))
+    call("add", cp, params: _*).map(_ => ())
+  }
+
+  def replace(
+      key: String, value: String, xt: Option[Long] = None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    val params = Seq(("key", key), ("value", value)) ++ xt.map(("xt", _))
+    call("replace", cp, params: _*).map(_ => ())
+  }
+
   private[this] def url(procedure: String): String = {
     s"$baseUrl/rpc/$procedure"
   }
@@ -46,8 +67,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       .timeout(connTimeoutMs = cp.waitTime.getOrElse(5000), readTimeoutMs = cp.waitTime.getOrElse(5000))
     Try(req.asString).flatMap {
       case res if res.isError =>
-        val message = Option(res.body).filter(_.nonEmpty)
-        Failure(new KyotoTycoonException(res.code, message))
+        Failure(new KyotoTycoonException(res.code, parseTsv(res.body).toMap.get("ERROR")))
       case res => Success(Response(res.code, res.body, res.headers))
     }
   }

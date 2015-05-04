@@ -226,7 +226,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("add value (already key exists)") {
       val key = asKey("test_key_for_add_string")
       val value = "test_value_for_add_string"
-      assert(client.set(key, Value(value)).isSuccess)
+      prepare(key, "prepared_value")
 
       val res = client.add(key, Value(value))
       assert(res.isFailure)
@@ -238,7 +238,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("replace string value") {
       val key = asKey("test_key_for_replace_string")
       val value = "test_value_for_replace_string"
-      assert(client.set(key, Value("prepare")).isSuccess)
+      prepare(key, "prepared_value")
       assert(client.replace(key, Value(value)).isSuccess)
 
       val res = Http(restUrl(key)).asString
@@ -249,7 +249,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("replace bytes value") {
       val key = asKey("test_key_for_replace_bytes")
       val value = "test_value_for_replace_bytes".getBytes("UTF-8")
-      assert(client.set(key, Value("prepare")).isSuccess)
+      prepare(key, "prepared_value")
       assert(client.replace(key, Value(value)).isSuccess)
 
       val res = Http(restUrl(key)).asBytes
@@ -261,7 +261,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val key = asKey("test_key_for_replace_with_xt")
       val value = "test_value_for_replace_with_xt"
       val xt = DateTime.now.plusMinutes(10)
-      assert(client.set(key, Value("prepare")).isSuccess)
+      prepare(key, "prepared_value")
       assert(client.replace(key, Value(value), Some(xt)).isSuccess)
 
       val res = Http(restUrl(key)).asString
@@ -272,7 +272,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("replace value (key require url encode)") {
       val key = asKey("te st/key_for_replace?=%~")
       val value = "te st/value_for_replace?=%~"
-      assert(client.set(key, Value("prepare")).isSuccess)
+      prepare(encode(key), "prepared_value")
       assert(client.replace(key, Value(value)).isSuccess)
 
       val res = Http(restUrl(encode(key))).asString
