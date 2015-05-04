@@ -1,10 +1,11 @@
 package com.zaneli.kyototycoon4s
 
 import org.scalatest.FunSpec
+import scalaj.http.Http
 
-class RpcClientSpec extends FunSpec {
+class RpcClientSpec extends FunSpec with ClientSpecBase {
 
-  private[this] val (host, port) = ("localhost", 1978)
+  override protected[this] val (host, port) = ("localhost", 1978)
 
   private[this] val client = KyotoTycoonClient.rpc(host, port)
 
@@ -62,7 +63,24 @@ class RpcClientSpec extends FunSpec {
     }
   }
 
-  private[this] def url(procedure: String): String = {
+  describe("clear") {
+    it("no params") {
+      val key1 = asKey("key1_for_clear")
+      val key2 = asKey("key2_for_clear")
+      prepare(key1, "value1")
+      prepare(key2, "value2")
+      assert(Http(restUrl(key1)).asString.isNotError)
+      assert(Http(restUrl(key2)).asString.isNotError)
+
+      val res = client.clear()
+      assert(res.isSuccess)
+
+      assert(Http(restUrl(key1)).asString.code === 404)
+      assert(Http(restUrl(key2)).asString.code === 404)
+    }
+  }
+
+  private[this] def rpcUrl(procedure: String): String = {
     s"http://$host:$port/rpc/$procedure"
   }
 }

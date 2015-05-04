@@ -27,6 +27,10 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     }
   }
 
+  def clear(implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    call("clear", cp).map(_ => ())
+  }
+
   private[this] def url(procedure: String): String = {
     s"$baseUrl/rpc/$procedure"
   }
