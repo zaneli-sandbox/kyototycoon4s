@@ -11,4 +11,4 @@ object KyotoTycoonClient {
   }
 }
 
-class KyotoTycoonException(code: Int, error: Option[String]) extends Exception(s"$code: ${error.getOrElse("")}")
+class KyotoTycoonException(code: Int, message: Option[String]) extends Exception(s"$code: ${message.getOrElse("")}")

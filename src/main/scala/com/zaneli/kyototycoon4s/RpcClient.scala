@@ -14,7 +14,11 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
   }
 
   def echo(params: (String, Any)*)(implicit cp: CommonParams = CommonParams.empty): Try[Seq[(String, String)]] = {
-    (call("echo", cp, params: _*).map(res => parseTsv(res.body)))
+    call("echo", cp, params: _*).map(res => parseTsv(res.body))
+  }
+
+  def report(implicit cp: CommonParams = CommonParams.empty): Try[Seq[(String, String)]] = {
+    call("report", cp).map(res => parseTsv(res.body))
   }
 
   private[this] def url(procedure: String): String = {
@@ -23,31 +27,29 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
 
   private[this] def call(
       procedure: String, cp: CommonParams, params: (String, Any)*): Try[Response] = {
-    val body = toTsv(cp.toParams ++ params.map { case (k, v) => (k, v.toString) })
+    val body = toTsv(cp.toParams ++ params)
     val req = (if (body.nonEmpty) {
       Http(url(procedure)).postData(body)
     } else {
       Http(url(procedure))
-    }).method("get").header("Content-Type", "text/tab-separated-values")
+    }).header("Content-Type", "text/tab-separated-values")
       .timeout(connTimeoutMs = cp.waitTime.getOrElse(5000), readTimeoutMs = cp.waitTime.getOrElse(5000))
     Try(req.asString).flatMap {
       case res if res.isError =>
-        val message = PartialFunction.condOpt(Option(res.body)) {
-          case s@Some(x) if x.nonEmpty => s
-        }.flatten
+        val message = Option(res.body).filter(_.nonEmpty)
         Failure(new KyotoTycoonException(res.code, message))
       case res => Success(Response(res.code, res.body, res.headers))
     }
   }
 
-  private[this] def toTsv(params: Seq[(String, String)]): String = {
+  private[this] def toTsv(params: Seq[(String, Any)]): String = {
     params.map { case (k, v) => s"$k\t$v"}.mkString("\n")
   }
+
   private[this] def parseTsv(value: String): Seq[(String, String)] = {
     value.lines.flatMap { line =>
-      line.split("\t") match {
-        case Array(k, v) => Some((k, v))
-        case _ => None
+      PartialFunction.condOpt(line.split("\t")) {
+        case Array(k, v) => (k, v)
       }
     }.toList
   }
@@ -59,11 +61,11 @@ case class CommonParams(
     waitKey: Option[String] = None,
     waitTime: Option[Int] = None) {
 
-  def toParams: Seq[(String, String)] = {
+  def toParams: Seq[(String, Any)] = {
     val params = db.map(("DB", _)) ::
-      cur.map(c => ("CUR", c.toString)) ::
+      cur.map(("CUR", _)) ::
       waitKey.map(("WAIT", _)) ::
-      waitTime.map(t => ("WAITTIME", t.toString)) :: Nil
+      waitTime.map(("WAITTIME", _)) :: Nil
     params.flatten
   }
 }

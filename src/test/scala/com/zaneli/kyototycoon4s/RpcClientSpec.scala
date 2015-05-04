@@ -28,7 +28,7 @@ class RpcClientSpec extends FunSpec {
       assert(res.isSuccess)
       res.foreach { params =>
         assert(params.size === 1)
-        assert(params.head === ("key", "123"))
+        assert(params.head === (("key", "123")))
       }
     }
     it("some params") {
@@ -40,6 +40,13 @@ class RpcClientSpec extends FunSpec {
         assert(params.contains(("key2", "abc")))
         assert(params.contains(("key3", "xyz")))
       }
+    }
+  }
+
+  describe("report") {
+    it("no params") {
+      val res = client.report
+      assert(res.isSuccess)
     }
   }
 
