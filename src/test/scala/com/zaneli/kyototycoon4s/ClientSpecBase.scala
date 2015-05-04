@@ -1,6 +1,5 @@
 package com.zaneli.kyototycoon4s
 
-import java.net.URLEncoder
 import org.scalatest.{BeforeAndAfter, Suite}
 import scala.collection.mutable.Set
 import scala.util.Try
@@ -15,7 +14,7 @@ trait ClientSpecBase extends BeforeAndAfter { this: Suite =>
 
   after {
     keys.foreach { key =>
-      Try(Http(restUrl(URLEncoder.encode(key, "UTF-8"))).method("delete").asString)
+      Try(Http(restUrl(encode(key))).method("delete").asString)
     }
     keys.clear()
   }

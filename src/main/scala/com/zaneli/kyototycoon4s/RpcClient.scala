@@ -42,7 +42,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       Http(url(procedure)).postData(body)
     } else {
       Http(url(procedure))
-    }).header("Content-Type", "text/tab-separated-values")
+    }).header("Content-Type", "text/tab-separated-values; colenc=U")
       .timeout(connTimeoutMs = cp.waitTime.getOrElse(5000), readTimeoutMs = cp.waitTime.getOrElse(5000))
     Try(req.asString).flatMap {
       case res if res.isError =>
@@ -53,13 +53,17 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
   }
 
   private[this] def toTsv(params: Seq[(String, Any)]): String = {
-    params.map { case (k, v) => s"$k\t$v"}.mkString("\n")
+    params.map { case (k, v) =>
+      val key = encode(k)
+      val value = encode(v.toString)
+      s"$key\t$value"
+    }.mkString("\n")
   }
 
   private[this] def parseTsv(value: String): Seq[(String, String)] = {
     value.lines.flatMap { line =>
       PartialFunction.condOpt(line.split("\t")) {
-        case Array(k, v) => (k, v)
+        case Array(k, v) => (decode(k), decode(v))
       }
     }.toList
   }

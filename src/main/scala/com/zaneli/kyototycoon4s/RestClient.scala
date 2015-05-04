@@ -1,7 +1,5 @@
 package com.zaneli.kyototycoon4s
 
-import java.net.URLEncoder
-
 import com.github.nscala_time.time.Imports.DateTime
 import scala.util.{Success, Failure, Try}
 import scalaj.http.{Http, HttpResponse, HttpRequest}
@@ -51,7 +49,7 @@ class RestClient private[kyototycoon4s] (private[this] val host: String, private
   }
 
   private[this] def url(key: String): String = {
-    val path = URLEncoder.encode(key, "UTF-8")
+    val path = encode(key)
     s"$baseUrl/$path"
   }
 
