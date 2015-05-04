@@ -21,6 +21,12 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     call("report", cp).map(res => parseTsv(res.body))
   }
 
+  def status(implicit cp: CommonParams = CommonParams.empty): Try[Status] = {
+    call("status", cp).flatMap { res =>
+      Status.extract(parseTsv(res.body))
+    }
+  }
+
   private[this] def url(procedure: String): String = {
     s"$baseUrl/rpc/$procedure"
   }
@@ -72,4 +78,18 @@ case class CommonParams(
 
 object CommonParams {
   lazy val empty: CommonParams = CommonParams()
+}
+
+case class Status(count: Int, size: Long, params: Seq[(String, String)])
+
+object Status {
+  def extract(params: Seq[(String, String)]): Try[Status] = {
+    val map = params.toMap
+    for {
+      count <- Try(map("count").toInt)
+      size <- Try(map("size").toLong)
+    } yield {
+      Status(count, size, map.filter { case (k, _) => k != "count" && k != "size" }.toList)
+    }
+  }
 }

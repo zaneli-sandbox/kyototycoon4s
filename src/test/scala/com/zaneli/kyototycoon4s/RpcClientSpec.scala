@@ -10,7 +10,7 @@ class RpcClientSpec extends FunSpec {
 
   describe("void") {
     it("no params") {
-      val res = client.void
+      val res = client.void()
       assert(res.isSuccess)
     }
   }
@@ -45,8 +45,20 @@ class RpcClientSpec extends FunSpec {
 
   describe("report") {
     it("no params") {
-      val res = client.report
+      val res = client.report()
       assert(res.isSuccess)
+    }
+  }
+
+  describe("status") {
+    it("no params") {
+      val res = client.status()
+      assert(res.isSuccess)
+      res.foreach { status =>
+        assert(status.count >= 0)
+        assert(status.size >= 0)
+        assert(status.params.nonEmpty)
+      }
     }
   }
 
