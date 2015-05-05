@@ -34,22 +34,31 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
   def set(
       key: String, value: String, xt: Option[Long] = None)(
       implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
-    val params = Seq(("key", key), ("value", value)) ++ xt.map(("xt", _))
-    call("set", cp, params: _*).map(_ => ())
+    set("set", key, value, xt, cp)
   }
 
   def add(
       key: String, value: String, xt: Option[Long] = None)(
       implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
-    val params = Seq(("key", key), ("value", value)) ++ xt.map(("xt", _))
-    call("add", cp, params: _*).map(_ => ())
+    set("add", key, value, xt, cp)
   }
 
   def replace(
       key: String, value: String, xt: Option[Long] = None)(
       implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    set("replace", key, value, xt, cp)
+  }
+
+  def append(
+      key: String, value: String, xt: Option[Long] = None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    set("append", key, value, xt, cp)
+  }
+
+  private[this] def set(
+      procedure: String, key: String, value: String, xt: Option[Long], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", value)) ++ xt.map(("xt", _))
-    call("replace", cp, params: _*).map(_ => ())
+    call(procedure, cp, params: _*).map(_ => ())
   }
 
   private[this] def url(procedure: String): String = {

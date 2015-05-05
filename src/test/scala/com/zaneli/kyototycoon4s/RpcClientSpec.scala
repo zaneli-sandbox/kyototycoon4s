@@ -204,6 +204,53 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
+  describe("append") {
+    it("append value without xt") {
+      val key = asKey("test_key_for_append_without_xt")
+      val value = "test_value_for_append_without_xt"
+      prepare(key, "prepared_value")
+      assert(client.append(key, value).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === "prepared_value" + value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("append value with xt") {
+      val key = asKey("test_key_for_append_with_xt")
+      val value = "test_value_for_append_with_xt"
+      prepare(key, "prepared_value")
+      val xt = DateTime.now.withMillisOfSecond(0).plusSeconds(30)
+      assert(client.append(key, value, Some(30)).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === "prepared_value" + value)
+      assertWithin(getXt(res.headers), xt)
+    }
+    it("append value (require url encode)") {
+      val key = asKey("te\tst/key\n_for_append?=%~")
+      val value = "te\tst/value\n_for_append?=%~"
+      prepare(encode(key), "prepared_value")
+      assert(client.append(key, value).isSuccess)
+
+      val res = Http(restUrl(encode(key))).asString
+      assert(res.isNotError)
+      assert(res.body === "prepared_value" + value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("append value (key not exists)") {
+      val key = asKey("test_key_for_append")
+      val value = "test_value_for_append"
+      assert(client.append(key, value).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+  }
+
   private[this] def assertWithin(actual: Option[DateTime], expected: DateTime, ms: Long = 1000L): Unit = {
     assert(actual.map(_.getMillis - expected.getMillis).exists(abs(_) <= ms))
   }
