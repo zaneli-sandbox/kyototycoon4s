@@ -47,6 +47,22 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
         assert(params.contains(("key3", "xyz")))
       }
     }
+    it("base64 encode param") {
+      val res = client.echo(("a\tb\nc\t", "z\ty\nz\t"))(Encoder.Base64)
+      assert(res.isSuccess)
+      res.foreach { params =>
+        assert(params.size === 1)
+        assert(params.head === (("a\tb\nc\t", "z\ty\nz\t")))
+      }
+    }
+    it("url encode param") {
+      val res = client.echo(("a\tb\nc\t", "z\ty\nz\t"))(Encoder.URL)
+      assert(res.isSuccess)
+      res.foreach { params =>
+        assert(params.size === 1)
+        assert(params.head === (("a\tb\nc\t", "z\ty\nz\t")))
+      }
+    }
   }
 
   describe("report") {

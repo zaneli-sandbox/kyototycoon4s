@@ -4,13 +4,17 @@ sealed abstract class Encoder {
   def colenc: Option[String]
   def encode(s: String): String
   def encode(bs: Array[Byte]): String
+  def decode(s: String): String
 }
 
 object Encoder {
+  private[this] lazy val regex = """.+; colenc=(\w)""".r
+
   object None extends Encoder {
     override val colenc = scala.None
     override def encode(s: String): String = s
     override def encode(bs: Array[Byte]): String = new String(bs, "UTF-8")
+    override def decode(s: String): String = s
   }
 
   object Base64 extends Encoder {
@@ -19,6 +23,7 @@ object Encoder {
     override val colenc = Some("B")
     override def encode(s: String): String = HttpConstants.base64(s)
     override def encode(bs: Array[Byte]): String = HttpConstants.base64(bs)
+    override def decode(s: String): String = new String(Base64Codec.decodeBase64(s), "UTF-8")
   }
 
   object URL extends Encoder {
@@ -27,5 +32,19 @@ object Encoder {
     override val colenc = Some("U")
     override def encode(s: String): String = codec.encode(s)
     override def encode(bs: Array[Byte]): String = new String(codec.encode(bs), "UTF-8")
+    override def decode(s: String): String = codec.decode(s)
+  }
+
+  def fromContentType(contentType: Option[String]): Encoder = {
+    val colenc = contentType.collect {
+      case regex(colenc) => colenc
+    }
+    fromColenc(colenc)
+  }
+
+  def fromColenc(e: Option[String]): Encoder = e match {
+    case Base64.colenc => Base64
+    case URL.colenc => URL
+    case _ => None
   }
 }

@@ -2,13 +2,11 @@ package com.zaneli.kyototycoon4s
 
 import com.zaneli.kyototycoon4s.rpc.{CommonParams, Encoder, Status}
 import scala.util.{Success, Failure, Try}
-import scalaj.http.Http
+import scalaj.http.{Http, HttpResponse}
 
 class RpcClient private[kyototycoon4s] (private[this] val host: String, private[this] val port: Int) {
 
   private[this] lazy val baseUrl = s"http://$host:$port"
-
-  private[this] case class Response(code: Int, body: String, headers: Map[String, String])
 
   def void(implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
     call("void", Encoder.None, cp).map(_ => ())
@@ -18,16 +16,16 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       params: (String, Any)*)(
       encoder: Encoder = Encoder.None)(
       implicit cp: CommonParams = CommonParams.empty): Try[Seq[(String, String)]] = {
-    call("echo", encoder, cp, params: _*).map(res => parseTsv(res.body))
+    call("echo", encoder, cp, params: _*).map(res => parseTsv(res))
   }
 
   def report(implicit cp: CommonParams = CommonParams.empty): Try[Seq[(String, String)]] = {
-    call("report", Encoder.None, cp).map(res => parseTsv(res.body))
+    call("report", Encoder.None, cp).map(res => parseTsv(res))
   }
 
   def status(implicit cp: CommonParams = CommonParams.empty): Try[Status] = {
     call("status", Encoder.None, cp).flatMap { res =>
-      Status.extract(parseTsv(res.body))
+      Status.extract(parseTsv(res))
     }
   }
 
@@ -70,7 +68,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
   }
 
   private[this] def call(
-      procedure: String, encoder: Encoder, cp: CommonParams, params: (String, Any)*): Try[Response] = {
+      procedure: String, encoder: Encoder, cp: CommonParams, params: (String, Any)*): Try[HttpResponse[String]] = {
     val body = toTsv(cp.toParams ++ params, encoder)
     val contentType = "text/tab-separated-values" + encoder.colenc.map(e => s"; colenc=$e").getOrElse("")
     val req = (if (body.nonEmpty) {
@@ -81,8 +79,8 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       .timeout(connTimeoutMs = cp.waitTime.getOrElse(5000), readTimeoutMs = cp.waitTime.getOrElse(5000))
     Try(req.asString).flatMap {
       case res if res.isError =>
-        Failure(new KyotoTycoonException(res.code, parseTsv(res.body).toMap.get("ERROR")))
-      case res => Success(Response(res.code, res.body, res.headers))
+        Failure(new KyotoTycoonException(res.code, parseTsv(res).toMap.get("ERROR")))
+      case res => Success(res)
     }
   }
 
@@ -97,10 +95,11 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     }.mkString("\n")
   }
 
-  private[this] def parseTsv(value: String): Seq[(String, String)] = {
-    value.lines.flatMap { line =>
+  private[this] def parseTsv(res: HttpResponse[String]): Seq[(String, String)] = {
+    val encoder = Encoder.fromContentType(res.contentType)
+    res.body.lines.flatMap { line =>
       PartialFunction.condOpt(line.split("\t")) {
-        case Array(k, v) => (k, v)
+        case Array(k, v) => (encoder.decode(k), encoder.decode(v))
       }
     }.toList
   }
