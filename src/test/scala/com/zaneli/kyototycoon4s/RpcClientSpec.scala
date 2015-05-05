@@ -2,7 +2,7 @@ package com.zaneli.kyototycoon4s
 
 import com.github.nscala_time.time.Imports.DateTime
 import com.zaneli.kyototycoon4s.Implicits._
-import com.zaneli.kyototycoon4s.rpc.Encoder
+import com.zaneli.kyototycoon4s.rpc.{Encoder, Origin}
 import java.nio.ByteBuffer
 import org.scalatest.FunSpec
 import scala.math.abs
@@ -194,7 +194,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.add(key, value)
       assert(res.isFailure)
-      assert(res.failed.get.getMessage === "450: DB: 6: record duplication: record duplication")
+      res.failed.foreach(t => assert(t.getMessage == "450: DB: 6: record duplication: record duplication"))
     }
   }
 
@@ -250,7 +250,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.replace(key, value)
       assert(res.isFailure)
-      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
+      res.failed.foreach(t => assert(t.getMessage == "450: DB: 7: no record: no record"))
     }
   }
 
@@ -298,6 +298,94 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       assert(res.isNotError)
       assert(res.body === value)
       assert(getXt(res.headers).isEmpty)
+    }
+  }
+
+  describe("increment") {
+    it("increment value") {
+      val key = asKey("test_key_for_increment")
+      val value = 10L
+      prepare(key, 1L)
+
+      val res = client.increment(key, value)
+      assert(res.isSuccess)
+      res.foreach(l => assert(l === 11L))
+    }
+    it("increment value (key not exists)") {
+      val key = asKey("test_key_for_increment_key_not_found")
+      val value = 1L
+
+      val res = client.increment(key, value)
+      assert(res.isSuccess)
+      res.foreach(l => assert(l === 1L))
+    }
+    it("increment value (orig=num)") {
+      val key = asKey("test_key_for_increment_orig_num")
+      val value = 11L
+
+      val res = client.increment(key, value, orig = Some(Origin.num(22L)))
+      assert(res.isSuccess)
+      res.foreach(l => assert(l === 33L))
+    }
+    it("increment value (orig=set)") {
+      val key = asKey("test_key_for_increment_orig_set")
+      val value = 5L
+
+      val res = client.increment(key, value, orig = Some(Origin.Set))
+      assert(res.isSuccess)
+      res.foreach(l => assert(l === 5L))
+    }
+    it("increment value (orig=try)") {
+      val key = asKey("test_key_for_increment_orig_try")
+      val value = 5L
+
+      val res = client.increment(key, value, orig = Some(Origin.Try))
+      assert(res.isFailure)
+      res.failed.foreach(t => assert(t.getMessage === "450: DB: 8: logical inconsistency: logical inconsistency"))
+    }
+  }
+
+  describe("increment_double") {
+    it("increment_double value") {
+      val key = asKey("test_key_for_increment_double")
+      val value = 12.34D
+      prepare(key, Array(0, 0, 0, 0, 0, 0, 0, 10, 0, 1, -58, -65, 82, 99, 64, 0))(_.map(_.toByte)) // 10.5D
+
+      val res = client.incrementDouble(key, value)
+      assert(res.isSuccess)
+      res.foreach(d => assert(d === 22.84D))
+    }
+    it("increment_double value (key not exists)") {
+      val key = asKey("test_key_for_increment_double_key_not_found")
+      val value = 55.55D
+
+      val res = client.incrementDouble(key, value)
+      assert(res.isSuccess)
+      res.foreach(d => assert(d === 55.55D))
+    }
+    it("increment_double value (orig=num)") {
+      val key = asKey("test_key_for_increment_double_orig_num")
+      val value = 12.3D
+
+      val res = client.incrementDouble(key, value, orig = Some(Origin.num(0.1D)))
+      assert(res.isSuccess)
+      res.foreach(d => assert(d === 12.4D))
+    }
+    it("increment_double value (orig=set)") {
+      val key = asKey("test_key_for_increment_double_orig_set")
+      val value = 12345.67D
+
+      val res = client.incrementDouble(key, value, orig = Some(Origin.Set))
+      assert(res.isSuccess)
+      res.foreach(d => assert(d === 12345.67D))
+    }
+    it("increment_double value (orig=try)") {
+      val key = asKey("test_key_for_increment_double_orig_try")
+      val value = 12345.67D
+
+      val res = client.incrementDouble(key, value, orig = Some(Origin.Try))
+      assert(res.isFailure)
+      res.failed.foreach(t => assert(t.getMessage === "450: DB: 8: logical inconsistency: logical inconsistency"))
     }
   }
 

@@ -1,6 +1,6 @@
 package com.zaneli.kyototycoon4s
 
-import com.zaneli.kyototycoon4s.rpc.{CommonParams, Encoder, Status}
+import com.zaneli.kyototycoon4s.rpc.{CommonParams, Encoder, Origin, Status}
 import scala.util.{Success, Failure, Try}
 import scalaj.http.{Http, HttpResponse}
 
@@ -57,10 +57,36 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     set("append", key, value, xt, encoder, toBytes, cp)
   }
 
+  def increment(
+      key: String, num: Long, orig: Option[Origin[Long]] = None, xt: Option[Long] = None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Long] = {
+    increment("increment", key, num, orig, xt, cp)(_.toLong)
+  }
+
+  def incrementDouble(
+      key: String, num: Double, orig: Option[Origin[Double]] = None, xt: Option[Long] = None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Double] = {
+    increment("increment_double", key, num, orig, xt, cp)(_.toDouble)
+  }
+
   private[this] def set[A](
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Encoder, toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))
     call(procedure, encoder, cp, params: _*).map(_ => ())
+  }
+
+  private[this] def increment[A](
+      procedure: String, key: String, num: A, orig: Option[Origin[A]], xt: Option[Long], cp: CommonParams)(
+      f: String => A): Try[A] = {
+    val params = Seq(("key", key), ("num", num)) ++ orig.map(o => ("orig", o.value)) ++ xt.map(("xt", _))
+    for {
+      res <- call(procedure, Encoder.None, cp, params: _*)
+      map = parseTsv(res).toMap
+      numStr <- Try(map("num"))
+      num <- Try(f(numStr))
+    } yield {
+      num
+    }
   }
 
   private[this] def url(procedure: String): String = {
