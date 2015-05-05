@@ -2,6 +2,8 @@ package com.zaneli.kyototycoon4s
 
 import com.github.nscala_time.time.Imports.DateTime
 import com.zaneli.kyototycoon4s.Implicits._
+import com.zaneli.kyototycoon4s.rpc.Encoder
+import java.nio.ByteBuffer
 import org.scalatest.FunSpec
 import scala.math.abs
 import scalaj.http.Http
@@ -21,14 +23,14 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
   describe("echo") {
     it("no params") {
-      val res = client.echo()
+      val res = client.echo()()
       assert(res.isSuccess)
       res.foreach { params =>
         assert(params.isEmpty)
       }
     }
     it("one param") {
-      val res = client.echo(("key", 123))
+      val res = client.echo(("key", 123))()
       assert(res.isSuccess)
       res.foreach { params =>
         assert(params.size === 1)
@@ -36,7 +38,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       }
     }
     it("some params") {
-      val res = client.echo(("key1", 123), ("key2", "abc"), ("key3", "xyz"))
+      val res = client.echo(("key1", 123), ("key2", "abc"), ("key3", "xyz"))()
       assert(res.isSuccess)
       res.foreach { params =>
         assert(params.size === 3)
@@ -108,11 +110,21 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("set value (require url encode)") {
       val key = asKey("te\tst/key\n_for_set?=%~")
       val value = "te\tst/value\n_for_set?=%~"
-      assert(client.set(key, value).isSuccess)
+      assert(client.set(key, value, encoder = Encoder.Base64).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("set long value") {
+      val key = asKey("test_key_for_set_long")
+      val value = 1L
+      assert(client.set(key, value, encoder = Encoder.Base64).isSuccess)
+
+      val res = Http(restUrl(key)).asBytes
+      assert(res.isNotError)
+      assert(ByteBuffer.wrap(res.body).getLong === value)
       assert(getXt(res.headers).isEmpty)
     }
   }
@@ -142,11 +154,21 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("add value (require url encode)") {
       val key = asKey("te\tst/key\n_for_add?=%~")
       val value = "te\tst/value\n_for_add?=%~"
-      assert(client.add(key, value).isSuccess)
+      assert(client.add(key, value, encoder = Encoder.Base64).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("add long value") {
+      val key = asKey("test_key_for_add_long")
+      val value = Long.MinValue
+      assert(client.add(key, value, encoder = Encoder.Base64).isSuccess)
+
+      val res = Http(restUrl(key)).asBytes
+      assert(res.isNotError)
+      assert(ByteBuffer.wrap(res.body).getLong === value)
       assert(getXt(res.headers).isEmpty)
     }
     it("add value (already key exists)") {
@@ -187,12 +209,23 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("replace value (require url encode)") {
       val key = asKey("te\tst/key\n_for_replace?=%~")
       val value = "te\tst/value\n_for_replace?=%~"
-      prepare(encode(key), "prepared_value")
-      assert(client.replace(key, value).isSuccess)
+      prepare(key, "prepared_value")
+      assert(client.replace(key, value, encoder = Encoder.Base64).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === value)
+      assert(getXt(res.headers).isEmpty)
+    }
+    it("replace long value") {
+      val key = asKey("test_key_for_replace_long")
+      val value = 0L
+      prepare(key, "prepared_value")
+      assert(client.replace(key, value, encoder = Encoder.Base64).isSuccess)
+
+      val res = Http(restUrl(key)).asBytes
+      assert(res.isNotError)
+      assert(ByteBuffer.wrap(res.body).getLong === value)
       assert(getXt(res.headers).isEmpty)
     }
     it("replace value (key not exists)") {
@@ -232,10 +265,10 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("append value (require url encode)") {
       val key = asKey("te\tst/key\n_for_append?=%~")
       val value = "te\tst/value\n_for_append?=%~"
-      prepare(encode(key), "prepared_value")
-      assert(client.append(key, value).isSuccess)
+      prepare(key, "prepared_value")
+      assert(client.append(key, value, encoder = Encoder.Base64).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === "prepared_value" + value)
       assert(getXt(res.headers).isEmpty)

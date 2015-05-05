@@ -2,12 +2,15 @@ package com.zaneli.kyototycoon4s
 
 import com.github.nscala_time.time.Imports.DateTime
 import java.nio.ByteBuffer
+import org.apache.commons.codec.net.URLCodec
 import scala.util.{Success, Failure, Try}
 import scalaj.http.{Http, HttpResponse, HttpRequest}
 
 class RestClient private[kyototycoon4s] (private[this] val host: String, private[this] val port: Int) {
 
   private[this] lazy val baseUrl = s"http://$host:$port"
+
+  private[this] lazy val codec = new URLCodec()
 
   def getString(key: String): Try[(String, Option[DateTime])] = {
     call(_.asString)(key, "get").map { case (body, headers) => (body, getXt(headers)) }
@@ -52,7 +55,7 @@ class RestClient private[kyototycoon4s] (private[this] val host: String, private
   }
 
   private[this] def url(key: String): String = {
-    val path = encode(key)
+    val path = codec.encode(key)
     s"$baseUrl/$path"
   }
 

@@ -20,6 +20,7 @@ javacOptions ++= Seq(
 
 libraryDependencies ++= Seq(
   "com.github.nscala-time" %% "nscala-time" % "2.0.0",
+  "commons-codec" % "commons-codec" % "1.10",
   "org.scalaj" %% "scalaj-http" % "1.1.4",
   "org.scalatest" %% "scalatest" % "2.2.4"  % "test"
 )

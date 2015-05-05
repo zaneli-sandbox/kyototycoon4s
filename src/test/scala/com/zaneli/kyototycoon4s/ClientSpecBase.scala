@@ -1,5 +1,6 @@
 package com.zaneli.kyototycoon4s
 
+import org.apache.commons.codec.net.URLCodec
 import org.scalatest.{BeforeAndAfter, Suite}
 import scala.collection.mutable.Set
 import scala.util.Try
@@ -14,7 +15,7 @@ trait ClientSpecBase extends BeforeAndAfter { this: Suite =>
 
   after {
     keys.foreach { key =>
-      Try(Http(restUrl(encode(key))).method("delete").asString)
+      Try(Http(restUrl(key)).method("delete").asString)
     }
     keys.clear()
   }
@@ -31,6 +32,8 @@ trait ClientSpecBase extends BeforeAndAfter { this: Suite =>
   }
 
   protected[this] def restUrl(key: String): String = {
-    s"http://$host:$port/$key"
+    s"http://$host:$port/${urlEncode(key)}"
   }
+
+  private[this] def urlEncode(s: String): String = new URLCodec().encode(s)
 }

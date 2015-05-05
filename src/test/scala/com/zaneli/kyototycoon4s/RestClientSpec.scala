@@ -40,7 +40,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("value exists (key require url encode)") {
       val key = asKey("te st/key?=%~")
       val value = "te st/value?=%~"
-      prepare(encode(key), value)
+      prepare(key, value)
       val res = client.getString(key)
       assert(res.isSuccess)
       res.foreach { case (v, x) =>
@@ -82,7 +82,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("value exists (key require url encode)") {
       val key = asKey("te st/key?=%~")
       val value = "te st/value?=%~"
-      prepare(encode(key), value)
+      prepare(key, value)
       val res = client.getBytes(key)
       assert(res.isSuccess)
       res.foreach { case (v, x) =>
@@ -124,7 +124,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("value exists (key require url encode)") {
       val key = asKey("te st/key?=%~")
       val value = Long.MaxValue
-      prepare(encode(key), value)
+      prepare(key, value)
       val res = client.getLong(key)
       assert(res.isSuccess)
       res.foreach { case (v, x) =>
@@ -166,7 +166,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("value exists (key require url encode)") {
       val key = asKey("te st/key?=%~")
       val value = "te st/value?=%~"
-      prepare(encode(key), value)
+      prepare(key, value)
       val res = client.head(key)
       assert(res.isSuccess)
       res.foreach { case (l, x) =>
@@ -228,7 +228,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val value = "te st/value_for_set?=%~"
       assert(client.set(key, value).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === value)
       assert(getXt(res.headers).isEmpty)
@@ -282,7 +282,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val value = "te st/value_for_add?=%~"
       assert(client.add(key, value).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === value)
       assert(getXt(res.headers).isEmpty)
@@ -347,10 +347,10 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
     it("replace value (key require url encode)") {
       val key = asKey("te st/key_for_replace?=%~")
       val value = "te st/value_for_replace?=%~"
-      prepare(encode(key), "prepared_value")
+      prepare(key, "prepared_value")
       assert(client.replace(key, value).isSuccess)
 
-      val res = Http(restUrl(encode(key))).asString
+      val res = Http(restUrl(key)).asString
       assert(res.isNotError)
       assert(res.body === value)
       assert(getXt(res.headers).isEmpty)
