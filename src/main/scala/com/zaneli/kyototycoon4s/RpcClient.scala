@@ -69,6 +69,10 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     increment("increment_double", key, num, orig, xt, cp)(_.toDouble)
   }
 
+  def remove(key: String, encoder: Encoder = Encoder.None)(implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    call("remove", encoder, cp, ("key", key)).map(_ => ())
+  }
+
   private[this] def set[A](
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Encoder, toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))

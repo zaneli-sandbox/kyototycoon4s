@@ -389,6 +389,21 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
+  describe("remove") {
+    it("remove value") {
+      val key = asKey("test_key_for_remove")
+      prepare(key, "prepared_value")
+      val res = client.remove(key)
+      assert(res.isSuccess)
+    }
+    it("remove value (key not exists)") {
+      val key = asKey("test_key_for_remove_key_not_found")
+      val res = client.remove(key)
+      assert(res.isFailure)
+      res.failed.foreach(t => assert(t.getMessage === "450: DB: 7: no record: no record"))
+    }
+  }
+
   private[this] def assertWithin(actual: Option[DateTime], expected: DateTime, ms: Long = 1000L): Unit = {
     assert(actual.map(_.getMillis - expected.getMillis).exists(abs(_) <= ms))
   }
