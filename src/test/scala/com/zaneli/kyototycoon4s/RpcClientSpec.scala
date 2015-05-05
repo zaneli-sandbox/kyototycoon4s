@@ -1,6 +1,7 @@
 package com.zaneli.kyototycoon4s
 
 import com.github.nscala_time.time.Imports.DateTime
+import com.zaneli.kyototycoon4s.Implicits._
 import org.scalatest.FunSpec
 import scala.math.abs
 import scalaj.http.Http

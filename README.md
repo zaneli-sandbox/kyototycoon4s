@@ -13,7 +13,8 @@
 ### RESTful-style
 
 ```scala
-> import com.zaneli.kyototycoon4s.{KyotoTycoonClient, Value}
+> import com.zaneli.kyototycoon4s.KyotoTycoonClient
+> import com.zaneli.kyototycoon4s.Implicits._
 > import com.github.nscala_time.time.Imports.DateTime
 
 > val client = KyotoTycoonClient.rest("localhost", 1978)
@@ -27,25 +28,28 @@ Success((value, Some(2015-05-05T16:40:21.000+09:00)))
 > client.getBytes("key_without_xt")
 Success(([B@1e22292d, None))
 
+> client.getLong("key_num")
+Success((100, None))
+
 > client.head("key_without_xt")
 Success((5, None)) // return Content-Length.
 
 > client.head("key_with_xt")
 Success((5, Some(2015-05-05T16:40:21.000+09:00))) // return Content-Length and expiration time.
 
-> client.set("key_without_xt", Value("value")) // write value as string.
+> client.set("key_without_xt", "value")
 Success(())
 
-> client.set("key_with_xt", Value("value"), Some(DateTime.now.plusMinutes(10)))
+> client.set("key_with_xt", "value", Some(DateTime.now.plusMinutes(10)))
 Success(())
 
-> client.set("key", Value("value".getBytes("UTF-8"))) // write value as byte array.
+> client.set("key_num", 100L)
 Success(())
 
-> client.add("other_key", Value("value"))
+> client.add("other_key", "value")
 Success(())
 
-> client.replace("key", Value("replaced_value"))
+> client.replace("key", "replaced_value")
 Success(())
 
 > client.delete("key")

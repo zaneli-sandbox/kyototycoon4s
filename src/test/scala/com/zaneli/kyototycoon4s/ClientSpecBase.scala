@@ -24,8 +24,9 @@ trait ClientSpecBase extends BeforeAndAfter { this: Suite =>
     key
   }
 
-  protected[this] def prepare(key: String, value: String, xt: Option[Long] = None): Unit = {
-    val req = Http(restUrl(key)).postData(value).method("put")
+  protected[this] def prepare[A](
+      key: String, value: A, xt: Option[Long] = None)(implicit f: A => Array[Byte]): Unit = {
+    val req = Http(restUrl(key)).postData(f(value)).method("put")
     xt.fold(req)(x => req.header("X-Kt-Xt", x.toString)).asString
   }
 
