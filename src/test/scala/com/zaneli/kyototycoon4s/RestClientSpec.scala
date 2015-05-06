@@ -299,14 +299,12 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val key = asKey("test_key")
       val value = "test_value"
       prepare(key, value)
-      val res1 = Http(restUrl(key)).asString
-      assert(res1.isNotError)
-      assert(res1.body === value)
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
 
       assert(client.delete(key).isSuccess)
-      val res2 = Http(restUrl(key)).asString
-      assert(res2.code === 404)
-      assert(getError(res2.headers).contains("DB: 7: no record: no record"))
+      assert(Http(restUrl(key)).asString.code === 404)
     }
     it("delete not exist value") {
       val key = asKey("test_key")

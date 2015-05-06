@@ -418,8 +418,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, "prepared_value")
       assert(client.cas(key, oval = Some("prepared_value")).isSuccess)
 
-      val res = Http(restUrl(key)).asString
-      assert(res.code === 404)
+      assert(Http(restUrl(key)).asString.code === 404)
     }
     it("create new value") {
       val key = asKey("test_key_for_cas_create")
@@ -450,8 +449,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, "prepared_value")
       assert(client.remove(key).isSuccess)
 
-      val res = Http(restUrl(key)).asString
-      assert(res.code === 404)
+      assert(Http(restUrl(key)).asString.code === 404)
     }
     it("remove value (key not exists)") {
       val key = asKey("test_key_for_remove_key_not_found")
@@ -544,6 +542,28 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       val res = client.check(key)
       assert(res.isFailure)
       res.failed.foreach(t => assert(t.getMessage === "450: DB: 7: no record: no record"))
+    }
+  }
+
+  describe("seize") {
+    it("as string") {
+      val key = asKey("test_key_for_seize")
+      val value = "test_value_for_seize"
+      prepare(key, value)
+
+      val res = client.seize(key)
+      assert(res.isSuccess)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
+      }
+
+      assert(Http(restUrl(key)).asString.code === 404)
+    }
+    it("key not exists") {
+      val res = client.seize("test_key_for_seize_not_found")
+      assert(res.isFailure)
+      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
     }
   }
 

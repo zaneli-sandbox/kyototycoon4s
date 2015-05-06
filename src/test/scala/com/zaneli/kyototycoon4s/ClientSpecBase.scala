@@ -36,10 +36,6 @@ trait ClientSpecBase extends BeforeAndAfter { this: Suite =>
     Xt.fromHeader(headers)
   }
 
-  protected[this] def getError(headers: Map[String, String]): Option[String] = {
-    headers.get("X-Kt-Error")
-  }
-
   protected[this] def restUrl(key: String): String = {
     s"http://$host:$port/${urlEncode(key)}"
   }
