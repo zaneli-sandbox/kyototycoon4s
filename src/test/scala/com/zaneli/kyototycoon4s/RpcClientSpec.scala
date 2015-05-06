@@ -4,6 +4,7 @@ import com.github.nscala_time.time.Imports.DateTime
 import com.zaneli.kyototycoon4s.Implicits._
 import com.zaneli.kyototycoon4s.rpc.{Encoder, Origin}
 import java.nio.ByteBuffer
+import java.util.Arrays
 import org.scalatest.FunSpec
 import scala.math.abs
 import scalaj.http.Http
@@ -126,7 +127,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("set value (require url encode)") {
       val key = asKey("te\tst/key\n_for_set?=%~")
       val value = "te\tst/value\n_for_set?=%~"
-      assert(client.set(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.set(key, value, encoder = Some(Encoder.URL)).isSuccess)
 
       val res = Http(restUrl(key)).asString
       assert(res.isNotError)
@@ -136,7 +137,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("set long value") {
       val key = asKey("test_key_for_set_long")
       val value = 1L
-      assert(client.set(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.set(key, value).isSuccess)
 
       val res = Http(restUrl(key)).asBytes
       assert(res.isNotError)
@@ -170,7 +171,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("add value (require url encode)") {
       val key = asKey("te\tst/key\n_for_add?=%~")
       val value = "te\tst/value\n_for_add?=%~"
-      assert(client.add(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.add(key, value, encoder = Some(Encoder.URL)).isSuccess)
 
       val res = Http(restUrl(key)).asString
       assert(res.isNotError)
@@ -180,7 +181,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("add long value") {
       val key = asKey("test_key_for_add_long")
       val value = Long.MinValue
-      assert(client.add(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.add(key, value).isSuccess)
 
       val res = Http(restUrl(key)).asBytes
       assert(res.isNotError)
@@ -226,7 +227,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       val key = asKey("te\tst/key\n_for_replace?=%~")
       val value = "te\tst/value\n_for_replace?=%~"
       prepare(key, "prepared_value")
-      assert(client.replace(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.replace(key, value, encoder = Some(Encoder.URL)).isSuccess)
 
       val res = Http(restUrl(key)).asString
       assert(res.isNotError)
@@ -237,7 +238,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       val key = asKey("test_key_for_replace_long")
       val value = 0L
       prepare(key, "prepared_value")
-      assert(client.replace(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.replace(key, value).isSuccess)
 
       val res = Http(restUrl(key)).asBytes
       assert(res.isNotError)
@@ -282,7 +283,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       val key = asKey("te\tst/key\n_for_append?=%~")
       val value = "te\tst/value\n_for_append?=%~"
       prepare(key, "prepared_value")
-      assert(client.append(key, value, encoder = Encoder.Base64).isSuccess)
+      assert(client.append(key, value, encoder = Some(Encoder.URL)).isSuccess)
 
       val res = Http(restUrl(key)).asString
       assert(res.isNotError)
@@ -401,6 +402,138 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       val res = client.remove(key)
       assert(res.isFailure)
       res.failed.foreach(t => assert(t.getMessage === "450: DB: 7: no record: no record"))
+    }
+  }
+
+  describe("getString") {
+    it("value exists") {
+      val key = asKey("test_key_for_get_string")
+      val value = "test_value_for_get_string"
+      prepare(key, value)
+
+      val res = client.getString(key)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.contains(value))
+        assert(x.isEmpty)
+      }
+    }
+    it("value with xt exists") {
+      val key = asKey("test_key_for_get_string_with_xt")
+      val value = "test_value_for_get_string_with_xt"
+      val xt = DateTime.now.plusMinutes(10)
+      prepare(key, value, Some(xt.getMillis / 1000))
+
+      val res = client.getString(key)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.contains(value))
+        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      }
+    }
+    it("value exists (key require url encode)") {
+      val key = asKey("te\tst/key_for_get_string\n?=%~")
+      val value = "te\tst/key_for_get_string\n?=%~"
+      prepare(key, value)
+      val res = client.getString(key, encoder = Encoder.URL)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.contains(value))
+        assert(x.isEmpty)
+      }
+    }
+    it("value not exists") {
+      val res = client.getString("test_key_for_get_string_not_found")
+      assert(res.isFailure)
+      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
+    }
+  }
+
+  describe("getBytes") {
+    it("value exists") {
+      val key = asKey("test_key_for_get_bytes")
+      val value = "test_value_for_get_bytes"
+      prepare(key, value)
+
+      val res = client.getBytes(key)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.exists(Arrays.equals(_, value.getBytes("UTF-8"))))
+        assert(x.isEmpty)
+      }
+    }
+    it("value with xt exists") {
+      val key = asKey("test_key_for_get_bytes_with_xt")
+      val value = "test_value_for_get_bytes_with_xt"
+      val xt = DateTime.now.plusMinutes(10)
+      prepare(key, value, Some(xt.getMillis / 1000))
+
+      val res = client.getBytes(key)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.exists(Arrays.equals(_, value.getBytes("UTF-8"))))
+        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      }
+    }
+    it("value exists (key require url encode)") {
+      val key = asKey("te\tst/key_for_get_bytes\n?=%~")
+      val value = "te\tst/key_for_get_bytes\n?=%~"
+      prepare(key, value)
+      val res = client.getBytes(key, encoder = Encoder.URL)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.exists(Arrays.equals(_, value.getBytes("UTF-8"))))
+        assert(x.isEmpty)
+      }
+    }
+    it("value not exists") {
+      val res = client.getBytes("test_key_for_get_bytes_not_found")
+      assert(res.isFailure)
+      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
+    }
+  }
+
+  describe("getLong") {
+    it("value exists") {
+      val key = asKey("test_key_for_get_long")
+      val value = Long.MaxValue
+      prepare(key, value)
+
+      val res = client.getLong(key)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.contains(value))
+        assert(x.isEmpty)
+      }
+    }
+    it("value with xt exists") {
+      val key = asKey("test_key_for_get_long_with_xt")
+      val value = 10L
+      val xt = DateTime.now.plusMinutes(10)
+      prepare(key, value, Some(xt.getMillis / 1000))
+
+      val res = client.getLong(key)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.contains(value))
+        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      }
+    }
+    it("value exists (key require url encode)") {
+      val key = asKey("te\tst/key_for_get_long\n?=%~")
+      val value = 0L
+      prepare(key, value)
+      val res = client.getLong(key, encoder = Encoder.URL)
+      assert(res.isSuccess)
+      res.foreach { case (v, x) =>
+        assert(v.contains(value))
+        assert(x.isEmpty)
+      }
+    }
+    it("value not exists") {
+      val res = client.getLong("test_key_for_get_long_not_found")
+      assert(res.isFailure)
+      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
     }
   }
 

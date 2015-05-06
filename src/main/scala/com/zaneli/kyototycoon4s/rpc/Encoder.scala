@@ -4,7 +4,8 @@ sealed abstract class Encoder {
   def colenc: Option[String]
   def encode(s: String): String
   def encode(bs: Array[Byte]): String
-  def decode(s: String): String
+  def decode(s: String): Array[Byte]
+  def decodeString(s: String): String
 }
 
 object Encoder {
@@ -14,7 +15,8 @@ object Encoder {
     override val colenc = scala.None
     override def encode(s: String): String = s
     override def encode(bs: Array[Byte]): String = new String(bs, "UTF-8")
-    override def decode(s: String): String = s
+    override def decode(s: String): Array[Byte] = s.getBytes("UTF-8")
+    override def decodeString(s: String): String = s
   }
 
   object Base64 extends Encoder {
@@ -23,7 +25,8 @@ object Encoder {
     override val colenc = Some("B")
     override def encode(s: String): String = HttpConstants.base64(s)
     override def encode(bs: Array[Byte]): String = HttpConstants.base64(bs)
-    override def decode(s: String): String = new String(Base64Codec.decodeBase64(s), "UTF-8")
+    override def decode(s: String): Array[Byte] = Base64Codec.decodeBase64(s)
+    override def decodeString(s: String): String = new String(decode(s), "UTF-8")
   }
 
   object URL extends Encoder {
@@ -32,7 +35,8 @@ object Encoder {
     override val colenc = Some("U")
     override def encode(s: String): String = codec.encode(s)
     override def encode(bs: Array[Byte]): String = new String(codec.encode(bs), "UTF-8")
-    override def decode(s: String): String = codec.decode(s)
+    override def decode(s: String): Array[Byte] = decodeString(s).getBytes("UTF-8")
+    override def decodeString(s: String): String = codec.decode(s)
   }
 
   def fromContentType(contentType: Option[String]): Encoder = {
