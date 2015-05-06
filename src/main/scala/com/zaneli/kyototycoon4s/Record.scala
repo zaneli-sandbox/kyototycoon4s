@@ -22,10 +22,10 @@ object Xt {
     )
   }
 
-  def fromTsv[A](tsv: Map[String, Array[Byte]]): Option[DateTime] = {
+  def fromTsv[A, B](tsv: Map[String, B])(toString: B => String): Option[DateTime] = {
     for {
-      xtBytes <- tsv.get("xt")
-      xt <- Try(new String(xtBytes, "UTF-8").toLong).toOption
+      value <- tsv.get("xt")
+      xt <- Try(toString(value).toLong).toOption
     } yield {
       new DateTime(xt * 1000)
     }

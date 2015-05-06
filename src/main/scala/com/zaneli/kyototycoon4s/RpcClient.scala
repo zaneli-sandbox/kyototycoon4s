@@ -1,5 +1,6 @@
 package com.zaneli.kyototycoon4s
 
+import com.github.nscala_time.time.Imports.DateTime
 import com.zaneli.kyototycoon4s.rpc.{CommonParams, Encoder, Origin, Status}
 import java.nio.ByteBuffer
 import scala.util.{Success, Failure, Try}
@@ -92,6 +93,16 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     get(key, encoder, cp)(ByteBuffer.wrap(_).getLong)
   }
 
+  def check(
+      key: String, encoder: Encoder = Encoder.None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[(Long, Option[DateTime])] = {
+    call("check", encoder, cp, ("key", key)).map { res =>
+      val tsv = parseTsv(res).toMap
+      val vsiz = tsv.get("vsiz").flatMap(s => Try(s.toLong).toOption).getOrElse(0L)
+      (vsiz, Xt.fromTsv(tsv)(identity))
+    }
+  }
+
   private[this] def set[A](
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Option[Encoder], toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))
@@ -109,8 +120,8 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     val params = Seq(("key", key), ("num", num)) ++ orig.map(o => ("orig", o.value)) ++ xt.map(("xt", _))
     for {
       res <- call(procedure, Encoder.None, cp, params: _*)
-      map = parseTsv(res).toMap
-      numStr <- Try(map("num"))
+      tsv = parseTsv(res).toMap
+      numStr <- Try(tsv("num"))
       num <- Try(f(numStr))
     } yield {
       num
@@ -124,7 +135,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       tsv = parseTsv(res)(_.decode(_)).toMap
       value <- Try(tsv("value"))
     } yield {
-      Record(toValue(value), Xt.fromTsv(tsv))
+      Record(toValue(value), Xt.fromTsv(tsv)(new String(_, "UTF-8")))
     }
   }
 

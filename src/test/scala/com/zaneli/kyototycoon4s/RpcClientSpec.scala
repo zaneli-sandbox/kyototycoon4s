@@ -537,6 +537,36 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
+  describe("check") {
+    it("check value") {
+      val key = asKey("test_key_for_check_without_xt")
+      prepare(key, "prepared_value")
+      val res = client.check(key)
+      assert(res.isSuccess)
+      res.foreach { case (s, x) =>
+        assert(s === "prepared_value".length)
+        assert(x.isEmpty)
+      }
+    }
+    it("check value with xt") {
+      val key = asKey("test_key_for_check_with_xt")
+      val xt = DateTime.now.plusMinutes(10)
+      prepare(key, "prepared_value", Some(xt.getMillis / 1000))
+      val res = client.check(key)
+      assert(res.isSuccess)
+      res.foreach { case (s, x) =>
+        assert(s === "prepared_value".length)
+        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      }
+    }
+    it("check value (key not exists)") {
+      val key = asKey("test_key_for_check_key_not_found")
+      val res = client.check(key)
+      assert(res.isFailure)
+      res.failed.foreach(t => assert(t.getMessage === "450: DB: 7: no record: no record"))
+    }
+  }
+
   private[this] def assertWithin(actual: Option[DateTime], expected: DateTime, ms: Long = 1000L): Unit = {
     assert(actual.map(_.getMillis - expected.getMillis).exists(abs(_) <= ms))
   }
