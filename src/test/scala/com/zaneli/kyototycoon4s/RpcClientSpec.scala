@@ -390,12 +390,68 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
+  describe("cas") {
+    it("swap old value") {
+      val key = asKey("test_key_for_cas_swap")
+      val value = "test_value_for_cas_swap"
+      prepare(key, "prepared_value")
+      assert(client.cas(key, oval = Some("prepared_value"), nval = Some(value)).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+    }
+    it("swap old value with xt") {
+      val key = asKey("test_key_for_cas_swap_with_xt")
+      val value = "test_value_for_cas_swap_with_xt"
+      prepare(key, "prepared_value")
+      val xt = DateTime.now.withMillisOfSecond(0).plusSeconds(30)
+      assert(client.cas(key, oval = Some("prepared_value"), nval = Some(value), xt = Some(30)).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+      assertWithin(getXt(res.headers), xt)
+    }
+    it("remove old value") {
+      val key = asKey("test_key_for_cas_remove")
+      prepare(key, "prepared_value")
+      assert(client.cas(key, oval = Some("prepared_value")).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.code === 404)
+    }
+    it("create new value") {
+      val key = asKey("test_key_for_cas_create")
+      val value = "test_value_for_cas_create"
+      assert(client.cas(key, nval = Some(value)).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.isNotError)
+      assert(res.body === value)
+    }
+    it("failed swap changed value") {
+      val key = asKey("test_key_for_cas_swap")
+      val value = "test_value_for_cas_swap"
+      prepare(key, "changed_value")
+      val res1 = client.cas(key, oval = Some("prepared_value"), nval = Some(value))
+      assert(res1.isFailure)
+      res1.failed.foreach(t => assert(t.getMessage === "450: DB: 8: logical inconsistency: status conflict"))
+
+      val res2 = Http(restUrl(key)).asString
+      assert(res2.isNotError)
+      assert(res2.body === "changed_value")
+    }
+  }
+
   describe("remove") {
     it("remove value") {
       val key = asKey("test_key_for_remove")
       prepare(key, "prepared_value")
-      val res = client.remove(key)
-      assert(res.isSuccess)
+      assert(client.remove(key).isSuccess)
+
+      val res = Http(restUrl(key)).asString
+      assert(res.code === 404)
     }
     it("remove value (key not exists)") {
       val key = asKey("test_key_for_remove_key_not_found")

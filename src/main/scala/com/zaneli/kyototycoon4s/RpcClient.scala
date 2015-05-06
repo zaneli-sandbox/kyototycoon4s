@@ -71,6 +71,22 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     increment("increment_double", key, num, orig, xt, cp)(_.toDouble)
   }
 
+  def cas[A, B](
+      key: String,
+      oval: Option[A] = Option.empty[String],
+      nval: Option[B] = Option.empty[String],
+      xt: Option[Long] = None,
+      encoder: Option[Encoder] = None)(
+      implicit oToBytes: A => Array[Byte], nToBytes: B => Array[Byte], cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    val params = Seq(("key", key)) ++ oval.map(o => ("oval", oToBytes(o))) ++ nval.map(n => ("nval", nToBytes(n))) ++ xt.map(("xt", _))
+    val e = (encoder, Seq(oval, nval).flatten) match {
+      case (Some(enc), _) => enc
+      case (_, vs) if vs.forall(_.isInstanceOf[String]) => Encoder.None
+      case _ => Encoder.Base64
+    }
+    call("cas", e, cp, params: _*).map(_ => ())
+  }
+
   def remove(key: String, encoder: Encoder = Encoder.None)(implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
     call("remove", encoder, cp, ("key", key)).map(_ => ())
   }
