@@ -20,9 +20,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getString(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v === value)
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value with xt exists") {
@@ -32,9 +32,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value, Some(xt.getMillis / 1000))
       val res = client.getString(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v === value)
-        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
     it("value exists (key require url encode)") {
@@ -43,9 +43,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getString(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v === value)
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value not exists") {
@@ -62,9 +62,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getBytes(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(Arrays.equals(v, value.getBytes("UTF-8")))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(r.xt.isEmpty)
       }
     }
     it("value with xt exists") {
@@ -74,9 +74,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value, Some(xt.getMillis / 1000))
       val res = client.getBytes(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(Arrays.equals(v, value.getBytes("UTF-8")))
-        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      res.foreach { r =>
+        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
     it("value exists (key require url encode)") {
@@ -85,9 +85,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getBytes(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(Arrays.equals(v, value.getBytes("UTF-8")))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(r.xt.isEmpty)
       }
     }
     it("value not exists") {
@@ -104,9 +104,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getLong(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v === value)
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value with xt exists") {
@@ -116,9 +116,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value, Some(xt.getMillis / 1000))
       val res = client.getLong(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v === value)
-        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
     it("value exists (key require url encode)") {
@@ -127,9 +127,9 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getLong(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v === value)
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value not exists") {
@@ -147,7 +147,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val res = client.head(key)
       assert(res.isSuccess)
       res.foreach { case (l, x) =>
-        assert(l === value.size)
+        assert(l === value.length)
         assert(x.isEmpty)
       }
     }
@@ -159,7 +159,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val res = client.head(key)
       assert(res.isSuccess)
       res.foreach { case (l, x) =>
-        assert(l === value.size)
+        assert(l === value.length)
         assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
@@ -170,7 +170,7 @@ class RestClientSpec extends FunSpec with ClientSpecBase {
       val res = client.head(key)
       assert(res.isSuccess)
       res.foreach { case (l, x) =>
-        assert(l === value.size)
+        assert(l === value.length)
         assert(x.isEmpty)
       }
     }

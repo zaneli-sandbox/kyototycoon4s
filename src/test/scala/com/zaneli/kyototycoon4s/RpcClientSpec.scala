@@ -413,9 +413,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.getString(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.contains(value))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value with xt exists") {
@@ -426,9 +426,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.getString(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.contains(value))
-        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
     it("value exists (key require url encode)") {
@@ -437,9 +437,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getString(key, encoder = Encoder.URL)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.contains(value))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value not exists") {
@@ -457,9 +457,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.getBytes(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.exists(Arrays.equals(_, value.getBytes("UTF-8"))))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(r.xt.isEmpty)
       }
     }
     it("value with xt exists") {
@@ -470,9 +470,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.getBytes(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.exists(Arrays.equals(_, value.getBytes("UTF-8"))))
-        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      res.foreach { r =>
+        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
     it("value exists (key require url encode)") {
@@ -481,9 +481,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getBytes(key, encoder = Encoder.URL)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.exists(Arrays.equals(_, value.getBytes("UTF-8"))))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(r.xt.isEmpty)
       }
     }
     it("value not exists") {
@@ -501,9 +501,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.getLong(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.contains(value))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value with xt exists") {
@@ -514,9 +514,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
       val res = client.getLong(key)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.contains(value))
-        assert(x.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
     it("value exists (key require url encode)") {
@@ -525,9 +525,9 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       prepare(key, value)
       val res = client.getLong(key, encoder = Encoder.URL)
       assert(res.isSuccess)
-      res.foreach { case (v, x) =>
-        assert(v.contains(value))
-        assert(x.isEmpty)
+      res.foreach { r =>
+        assert(r.value === value)
+        assert(r.xt.isEmpty)
       }
     }
     it("value not exists") {
@@ -539,9 +539,5 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
 
   private[this] def assertWithin(actual: Option[DateTime], expected: DateTime, ms: Long = 1000L): Unit = {
     assert(actual.map(_.getMillis - expected.getMillis).exists(abs(_) <= ms))
-  }
-
-  private[this] def rpcUrl(procedure: String): String = {
-    s"http://$host:$port/rpc/$procedure"
   }
 }

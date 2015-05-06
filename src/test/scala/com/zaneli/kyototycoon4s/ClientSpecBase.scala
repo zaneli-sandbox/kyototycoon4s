@@ -1,5 +1,6 @@
 package com.zaneli.kyototycoon4s
 
+import com.github.nscala_time.time.Imports.DateTime
 import org.apache.commons.codec.net.URLCodec
 import org.scalatest.{BeforeAndAfter, Suite}
 import scala.collection.mutable.Set
@@ -29,6 +30,14 @@ trait ClientSpecBase extends BeforeAndAfter { this: Suite =>
       key: String, value: A, xt: Option[Long] = None)(implicit f: A => Array[Byte]): Unit = {
     val req = Http(restUrl(key)).postData(f(value)).method("put")
     xt.fold(req)(x => req.header("X-Kt-Xt", x.toString)).asString
+  }
+
+  protected[this] def getXt(headers: Map[String, String]): Option[DateTime] = {
+    Xt.fromHeader(headers)
+  }
+
+  protected[this] def getError(headers: Map[String, String]): Option[String] = {
+    headers.get("X-Kt-Error")
   }
 
   protected[this] def restUrl(key: String): String = {

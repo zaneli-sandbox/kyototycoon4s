@@ -1,6 +1,5 @@
 package com.zaneli.kyototycoon4s
 
-import com.github.nscala_time.time.Imports.DateTime
 import com.zaneli.kyototycoon4s.rpc.{CommonParams, Encoder, Origin, Status}
 import java.nio.ByteBuffer
 import scala.util.{Success, Failure, Try}
@@ -77,19 +76,19 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
 
   def getString(
       key: String, encoder: Encoder = Encoder.None)(
-      implicit cp: CommonParams = CommonParams.empty): Try[(Option[String], Option[DateTime])] = {
+      implicit cp: CommonParams = CommonParams.empty): Try[Record[String]] = {
     get(key, encoder, cp)(new String(_, "UTF-8"))
   }
 
   def getBytes(
       key: String, encoder: Encoder = Encoder.None)(
-      implicit cp: CommonParams = CommonParams.empty): Try[(Option[Array[Byte]], Option[DateTime])] = {
+      implicit cp: CommonParams = CommonParams.empty): Try[Record[Array[Byte]]] = {
     get(key, encoder, cp)(identity)
   }
 
   def getLong(
       key: String, encoder: Encoder = Encoder.None)(
-      implicit cp: CommonParams = CommonParams.empty): Try[(Option[Long], Option[DateTime])] = {
+      implicit cp: CommonParams = CommonParams.empty): Try[Record[Long]] = {
     get(key, encoder, cp)(ByteBuffer.wrap(_).getLong)
   }
 
@@ -97,7 +96,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Option[Encoder], toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))
     val e = (encoder, value) match {
-      case (Some(e), _) => e
+      case (Some(enc), _) => enc
       case (_, _: String) => Encoder.None
       case _ => Encoder.Base64
     }
@@ -119,17 +118,13 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
   }
 
   private[this] def get[A](
-      key: String, encoder: Encoder, cp: CommonParams)(toValue: Array[Byte] => A): Try[(Option[A], Option[DateTime])] = {
-    call("get", encoder, cp, ("key", key)).map { res =>
-      val map = parseTsv(res)(_.decode(_)).toMap
-      val value = map.get("value").map(toValue)
-      val xt = for {
-        xtBytes <- map.get("xt")
-        xt <- Try(new String(xtBytes, "UTF-8").toLong).toOption
-      } yield {
-        new DateTime(xt * 1000)
-      }
-      (value, xt)
+      key: String, encoder: Encoder, cp: CommonParams)(toValue: Array[Byte] => A): Try[Record[A]] = {
+    for {
+      res <- call("get", encoder, cp, ("key", key))
+      tsv = parseTsv(res)(_.decode(_)).toMap
+      value <- Try(tsv("value"))
+    } yield {
+      Record(toValue(value), Xt.fromTsv(tsv))
     }
   }
 

@@ -12,16 +12,16 @@ class RestClient private[kyototycoon4s] (private[this] val host: String, private
 
   private[this] lazy val codec = new URLCodec()
 
-  def getString(key: String): Try[(String, Option[DateTime])] = {
-    call(_.asString)(key, "get").map { case (body, headers) => (body, getXt(headers)) }
+  def getString(key: String): Try[Record[String]] = {
+    call(_.asString)(key, "get").map { case (body, headers) => Record(body, headers)(Xt.fromHeader) }
   }
 
-  def getBytes(key: String): Try[(Array[Byte], Option[DateTime])] = {
-    call(_.asBytes)(key, "get").map { case (body, headers) => (body, getXt(headers)) }
+  def getBytes(key: String): Try[Record[Array[Byte]]] = {
+    call(_.asBytes)(key, "get").map { case (body, headers) => Record(body, headers)(Xt.fromHeader) }
   }
 
-  def getLong(key: String): Try[(Long, Option[DateTime])] = {
-    getBytes(key).map { case (body, xt) => (ByteBuffer.wrap(body).getLong, xt) }
+  def getLong(key: String): Try[Record[Long]] = {
+    getBytes(key).map(r => Record(ByteBuffer.wrap(r.value).getLong, r.xt))
   }
 
   def head(key: String): Try[(Long, Option[DateTime])] = {
@@ -29,7 +29,7 @@ class RestClient private[kyototycoon4s] (private[this] val host: String, private
       (body, headers) <- call(_.asString)(key, "head")
       length <- Try(headers.get("Content-Length").get.toLong)
     } yield {
-      (length, getXt(headers))
+      (length, Xt.fromHeader(headers))
     }
   }
 
@@ -74,5 +74,9 @@ class RestClient private[kyototycoon4s] (private[this] val host: String, private
       case res if res.isError => Failure(new KyotoTycoonException(res.code, getError(res.headers)))
       case res => Success((res.body, res.headers))
     }
+  }
+
+  private[this] def getError(headers: Map[String, String]): Option[String] = {
+    headers.get("X-Kt-Error")
   }
 }
