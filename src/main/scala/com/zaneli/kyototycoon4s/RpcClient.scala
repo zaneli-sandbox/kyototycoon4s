@@ -91,22 +91,10 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     call("remove", encoder, cp, ("key", key)).map(_ => ())
   }
 
-  def getString(
-      key: String, encoder: Encoder = Encoder.None)(
-      implicit cp: CommonParams = CommonParams.empty): Try[Record[String]] = {
-    get(key, encoder, cp)(new String(_, "UTF-8"))
-  }
-
-  def getBytes(
-      key: String, encoder: Encoder = Encoder.None)(
-      implicit cp: CommonParams = CommonParams.empty): Try[Record[Array[Byte]]] = {
-    get(key, encoder, cp)(identity)
-  }
-
-  def getLong(
-      key: String, encoder: Encoder = Encoder.None)(
-      implicit cp: CommonParams = CommonParams.empty): Try[Record[Long]] = {
-    get(key, encoder, cp)(ByteBuffer.wrap(_).getLong)
+  def get[A](
+      key: String, encoder: Encoder = Encoder.None, as: Array[Byte] => A = { bs: Array[Byte] => new String(bs, "UTF-8") })(
+      implicit cp: CommonParams = CommonParams.empty): Try[Record[A]] = {
+    getValue(key, encoder, cp)(as)
   }
 
   def check(
@@ -144,14 +132,14 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     }
   }
 
-  private[this] def get[A](
-      key: String, encoder: Encoder, cp: CommonParams)(toValue: Array[Byte] => A): Try[Record[A]] = {
+  private[this] def getValue[A](
+      key: String, encoder: Encoder, cp: CommonParams)(as: Array[Byte] => A): Try[Record[A]] = {
     for {
       res <- call("get", encoder, cp, ("key", key))
       tsv = parseTsv(res)(_.decode(_)).toMap
       value <- Try(tsv("value"))
     } yield {
-      Record(toValue(value), Xt.fromTsv(tsv)(new String(_, "UTF-8")))
+      Record(as(value), Xt.fromTsv(tsv)(new String(_, "UTF-8")))
     }
   }
 

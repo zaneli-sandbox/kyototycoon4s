@@ -12,16 +12,8 @@ class RestClient private[kyototycoon4s] (private[this] val host: String, private
 
   private[this] lazy val codec = new URLCodec()
 
-  def getString(key: String): Try[Record[String]] = {
-    call(_.asString)(key, "get").map { case (body, headers) => Record(body, headers)(Xt.fromHeader) }
-  }
-
-  def getBytes(key: String): Try[Record[Array[Byte]]] = {
-    call(_.asBytes)(key, "get").map { case (body, headers) => Record(body, headers)(Xt.fromHeader) }
-  }
-
-  def getLong(key: String): Try[Record[Long]] = {
-    getBytes(key).map(r => Record(ByteBuffer.wrap(r.value).getLong, r.xt))
+  def get[A](key: String, as: Array[Byte] => A = { bs: Array[Byte] => new String(bs, "UTF-8") }): Try[Record[A]] = {
+    call(_.asBytes)(key, "get").map { case (body, headers) => Record(as(body), headers)(Xt.fromHeader) }
   }
 
   def head(key: String): Try[(Long, Option[DateTime])] = {

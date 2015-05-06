@@ -19,17 +19,14 @@
 
 > val client = KyotoTycoonClient.rest("localhost", 1978)
 
-> client.getString("key_without_xt")
+> client.get("key_without_xt") // get value as string
 Success(Record(value, None))
 
-> client.getString("key_with_xt")
+> client.get("key_with_xt")
 Success(Record(value, Some(2015-05-05T16:40:21.000+09:00)))
 
-> client.getBytes("key_without_xt")
+> client.get("key_binary", as = identity) // get value as byte array
 Success(Record([B@1e22292d, None))
-
-> client.getLong("key_num")
-Success(Record(100, None))
 
 > client.head("key_without_xt")
 Success((5, None)) // return Content-Length.

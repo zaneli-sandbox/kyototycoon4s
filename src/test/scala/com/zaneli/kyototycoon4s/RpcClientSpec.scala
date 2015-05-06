@@ -461,133 +461,57 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
-  describe("getString") {
-    it("value exists") {
+  describe("get") {
+    it("as string") {
       val key = asKey("test_key_for_get_string")
       val value = "test_value_for_get_string"
       prepare(key, value)
 
-      val res = client.getString(key)
+      val res = client.get(key)
       assert(res.isSuccess)
       res.foreach { r =>
         assert(r.value === value)
         assert(r.xt.isEmpty)
       }
     }
-    it("value with xt exists") {
-      val key = asKey("test_key_for_get_string_with_xt")
-      val value = "test_value_for_get_string_with_xt"
-      val xt = DateTime.now.plusMinutes(10)
-      prepare(key, value, Some(xt.getMillis / 1000))
-
-      val res = client.getString(key)
-      assert(res.isSuccess)
-      res.foreach { r =>
-        assert(r.value === value)
-        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
-      }
-    }
-    it("value exists (key require url encode)") {
-      val key = asKey("te\tst/key_for_get_string\n?=%~")
-      val value = "te\tst/key_for_get_string\n?=%~"
-      prepare(key, value)
-      val res = client.getString(key, encoder = Encoder.URL)
-      assert(res.isSuccess)
-      res.foreach { r =>
-        assert(r.value === value)
-        assert(r.xt.isEmpty)
-      }
-    }
-    it("value not exists") {
-      val res = client.getString("test_key_for_get_string_not_found")
-      assert(res.isFailure)
-      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
-    }
-  }
-
-  describe("getBytes") {
-    it("value exists") {
+    it("as byte array") {
       val key = asKey("test_key_for_get_bytes")
       val value = "test_value_for_get_bytes"
       prepare(key, value)
 
-      val res = client.getBytes(key)
+      val res = client.get(key, as = identity)
       assert(res.isSuccess)
       res.foreach { r =>
-        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
+        assert(Arrays.equals(r.value, value))
         assert(r.xt.isEmpty)
       }
     }
-    it("value with xt exists") {
-      val key = asKey("test_key_for_get_bytes_with_xt")
-      val value = "test_value_for_get_bytes_with_xt"
+    it("with xt exists") {
+      val key = asKey("test_key_for_get_with_xt")
+      val value = "test_value_for_get_with_xt"
       val xt = DateTime.now.plusMinutes(10)
       prepare(key, value, Some(xt.getMillis / 1000))
 
-      val res = client.getBytes(key)
-      assert(res.isSuccess)
-      res.foreach { r =>
-        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
-        assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
-      }
-    }
-    it("value exists (key require url encode)") {
-      val key = asKey("te\tst/key_for_get_bytes\n?=%~")
-      val value = "te\tst/key_for_get_bytes\n?=%~"
-      prepare(key, value)
-      val res = client.getBytes(key, encoder = Encoder.URL)
-      assert(res.isSuccess)
-      res.foreach { r =>
-        assert(Arrays.equals(r.value, value.getBytes("UTF-8")))
-        assert(r.xt.isEmpty)
-      }
-    }
-    it("value not exists") {
-      val res = client.getBytes("test_key_for_get_bytes_not_found")
-      assert(res.isFailure)
-      assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
-    }
-  }
-
-  describe("getLong") {
-    it("value exists") {
-      val key = asKey("test_key_for_get_long")
-      val value = Long.MaxValue
-      prepare(key, value)
-
-      val res = client.getLong(key)
-      assert(res.isSuccess)
-      res.foreach { r =>
-        assert(r.value === value)
-        assert(r.xt.isEmpty)
-      }
-    }
-    it("value with xt exists") {
-      val key = asKey("test_key_for_get_long_with_xt")
-      val value = 10L
-      val xt = DateTime.now.plusMinutes(10)
-      prepare(key, value, Some(xt.getMillis / 1000))
-
-      val res = client.getLong(key)
+      val res = client.get(key)
       assert(res.isSuccess)
       res.foreach { r =>
         assert(r.value === value)
         assert(r.xt.exists(_.getMillis == xt.withMillisOfSecond(0).getMillis))
       }
     }
-    it("value exists (key require url encode)") {
-      val key = asKey("te\tst/key_for_get_long\n?=%~")
-      val value = 0L
+    it("key require url encode") {
+      val key = asKey("te\tst/key _for_get\n?=%~")
+      val value = "te\tst/key _for_get\n?=%~"
       prepare(key, value)
-      val res = client.getLong(key, encoder = Encoder.URL)
+      val res = client.get(key, encoder = Encoder.URL)
       assert(res.isSuccess)
       res.foreach { r =>
         assert(r.value === value)
         assert(r.xt.isEmpty)
       }
     }
-    it("value not exists") {
-      val res = client.getLong("test_key_for_get_long_not_found")
+    it("key not exists") {
+      val res = client.get("test_key_for_get_not_found")
       assert(res.isFailure)
       assert(res.failed.get.getMessage === "450: DB: 7: no record: no record")
     }
