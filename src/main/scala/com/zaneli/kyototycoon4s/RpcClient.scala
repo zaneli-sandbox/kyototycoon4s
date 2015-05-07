@@ -2,7 +2,6 @@ package com.zaneli.kyototycoon4s
 
 import com.github.nscala_time.time.Imports.DateTime
 import com.zaneli.kyototycoon4s.rpc.{CommonParams, Encoder, Origin, Status}
-import java.nio.ByteBuffer
 import scala.util.{Success, Failure, Try}
 import scalaj.http.{Http, HttpResponse}
 
@@ -142,7 +141,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       procedure: String, key: String, encoder: Encoder, cp: CommonParams)(as: Array[Byte] => A): Try[Record[A]] = {
     for {
       res <- call(procedure, encoder, cp, ("key", key))
-      tsv = parseTsv(res)(_.decode(_)).toMap
+      tsv = parseTsv(res, _.decode(_)).toMap
       value <- Try(tsv("value"))
     } yield {
       Record(as(value), Xt.fromTsv(tsv)(new String(_, "UTF-8")))
@@ -181,10 +180,9 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     }.mkString("\n")
   }
 
-  private[this] implicit val decodeValue: (Encoder, String) => String = _.decodeString(_)
-
-  private[this] def parseTsv[A](res: HttpResponse[String])(
-    implicit decodeValue: (Encoder, String) => A): Seq[(String, A)] = {
+  private[this] def parseTsv[A](
+      res: HttpResponse[String],
+      decodeValue: (Encoder, String) => A = { (e: Encoder, s: String) => e.decodeString(s) }): Seq[(String, A)] = {
     val encoder = Encoder.fromContentType(res.contentType)
     res.body.lines.flatMap { line =>
       PartialFunction.condOpt(line.split("\t")) {
