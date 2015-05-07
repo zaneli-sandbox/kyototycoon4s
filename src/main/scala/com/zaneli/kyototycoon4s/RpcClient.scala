@@ -112,6 +112,42 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     getValue("seize", key, encoder, cp)(as)
   }
 
+  def setBulk(
+      records: (String, Array[Byte])*)(
+      xt: Option[Long] = None, atomic: Boolean = false, encoder: Encoder = Encoder.None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Int] = {
+    val params = toBulkParams(records, atomic, xt)
+    call("set_bulk", encoder, cp, params: _*).flatMap { res =>
+      val tsv = parseTsv(res).toMap
+      Try(tsv("num").toInt)
+    }
+  }
+
+  def removeBulk(
+      keys: String*)(
+      atomic: Boolean = false, encoder: Encoder = Encoder.None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Int] = {
+    val params = toBulkParams(keys.map((_, "")), atomic)
+    call("remove_bulk", encoder, cp, params: _*).flatMap { res =>
+      val tsv = parseTsv(res).toMap
+      Try(tsv("num").toInt)
+    }
+  }
+
+  def getBulk(
+      keys: String*)(
+      atomic: Boolean = false, encoder: Encoder = Encoder.None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Map[String, String]] = {
+    val params = toBulkParams(keys.map((_, "")), atomic)
+    call("get_bulk", encoder, cp, params: _*).map { res =>
+      val tsv = parseTsv(res).toMap
+      val records = tsv.collect { case (k, v) if k.startsWith("_") => (k.tail, v) }
+      val num = tsv.get("num").map(_.toInt).getOrElse(0)
+      require(records.size == num)
+      records
+    }
+  }
+
   private[this] def set[A](
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Option[Encoder], toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))
@@ -147,6 +183,12 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       Record(as(value), Xt.fromTsv(tsv)(new String(_, "UTF-8")))
     }
   }
+
+  private[this] def toBulkParams(records: Seq[(String, Any)], atomic: Boolean, xt: Option[Long] = None): Seq[(String, Any)] =
+    (("atomic", atomic) +: withPrefix(records)) ++ xt.map(("xt", _))
+
+  private[this] def withPrefix[A](records: Seq[(String, A)]): Seq[(String, A)] =
+    records.map { case (k, v) => (s"_$k", v) }
 
   private[this] def url(procedure: String): String = {
     s"$baseUrl/rpc/$procedure"

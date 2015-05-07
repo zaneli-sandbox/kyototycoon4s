@@ -567,6 +567,91 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
+  describe("set_bulk") {
+    it("as string values") {
+      val key1 = asKey("test_key_for_set_bulk_string_1")
+      val value1 = "test_value_for_set_bulk_string_1"
+      val key2 = asKey("test_key_for_set_bulk_string_2")
+      val value2 = "test_value_for_set_bulk_string_2"
+      val key3 = asKey("test_key_for_set_bulk_string_3")
+      val value3 = "test_value_for_set_bulk_string_3"
+      val res = client.setBulk((key1, value1), (key2, value2), (key3, value3))()
+      assert(res.isSuccess)
+      res.foreach(num => assert(num === 3))
+
+      (1 to 3).foreach { i =>
+        val res = Http(restUrl(s"test_key_for_set_bulk_string_$i")).asString
+        assert(res.isNotError)
+        assert(res.body === s"test_value_for_set_bulk_string_$i")
+        assert(getXt(res.headers).isEmpty)
+      }
+    }
+    it("as byte array values") {
+      val records = (1 to 3).map { i =>
+        val k = asKey(s"test_key_for_set_bulk_byte_array_$i")
+        val v = s"test_value_for_set_bulk_byte_array_$i".getBytes("UTF-8")
+        (k, v)
+      }
+      val res = client.setBulk(records: _*)()
+      assert(res.isSuccess)
+      res.foreach(num => assert(num === records.size))
+
+      records.foreach { case (k, v) =>
+        val res = Http(restUrl(k)).asBytes
+        assert(res.isNotError)
+        assert(Arrays.equals(res.body, v))
+        assert(getXt(res.headers).isEmpty)
+      }
+    }
+    it("with xt") {
+      val key = asKey("test_key_for_set_bulk_with_xt")
+      val value = "test_value_for_set_bulk_with_xt"
+      val xt = DateTime.now.withMillisOfSecond(0).plusSeconds(120)
+      val res1 = client.setBulk((key, value))(xt = Some(120))
+      assert(res1.isSuccess)
+      res1.foreach(num => assert(num === 1))
+
+      val res2 = Http(restUrl(key)).asString
+      assert(res2.isNotError)
+      assert(res2.body === value)
+      assertWithin(getXt(res2.headers), xt)
+    }
+  }
+
+  describe("remove_bulk") {
+    it("remove records") {
+      val keys = (1 to 3).map { i =>
+        val k = asKey(s"test_key_for_remove_bulk_$i")
+        val v = s"test_value_for_remove_bulk_$i"
+        prepare(k, v)
+        k
+      }
+      val res = client.removeBulk(keys: _*)(atomic = true)
+      assert(res.isSuccess)
+      res.foreach(num => assert(num === keys.size))
+
+      keys.foreach(k => assert(Http(restUrl(k)).asString.code === 404))
+    }
+  }
+
+  describe("get_bulk") {
+    it("get records") {
+      val kvs = (1 to 3).map { i =>
+        val k = asKey(s"test_key_for_remove_bulk_$i")
+        val v = s"test_value_for_remove_bulk_$i"
+        prepare(k, v)
+        (k, v)
+      }
+      val res = client.getBulk(kvs.map(_._1): _*)(atomic = false)
+      assert(res.isSuccess)
+      res.foreach { records =>
+        kvs.foreach { case (k, v) =>
+          assert(records.get(k).contains(v))
+        }
+      }
+    }
+  }
+
   private[this] def assertWithin(actual: Option[DateTime], expected: DateTime, ms: Long = 1000L): Unit = {
     assert(actual.map(_.getMillis - expected.getMillis).exists(abs(_) <= ms))
   }
