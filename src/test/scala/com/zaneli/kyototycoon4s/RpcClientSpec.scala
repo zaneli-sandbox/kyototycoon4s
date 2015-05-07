@@ -652,6 +652,17 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     }
   }
 
+  describe("vacuum") {
+    it("no params") {
+      val res = client.vacuum()
+      assert(res.isSuccess)
+    }
+    it("set step") {
+      val res = client.vacuum(step = Some(1))
+      assert(res.isSuccess)
+    }
+  }
+
   private[this] def assertWithin(actual: Option[DateTime], expected: DateTime, ms: Long = 1000L): Unit = {
     assert(actual.map(_.getMillis - expected.getMillis).exists(abs(_) <= ms))
   }

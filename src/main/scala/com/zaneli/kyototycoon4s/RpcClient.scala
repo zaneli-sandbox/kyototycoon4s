@@ -148,6 +148,12 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     }
   }
 
+  def vacuum(
+      step: Option[Int] = None, encoder: Encoder = Encoder.None)(
+      implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
+    call("vacuum", encoder, cp, step.map(("step", _)).toSeq: _*).map(_ => ())
+  }
+
   private[this] def set[A](
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Option[Encoder], toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))
