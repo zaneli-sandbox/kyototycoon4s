@@ -140,11 +140,7 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       implicit cp: CommonParams = CommonParams.empty): Try[Map[String, String]] = {
     val params = toBulkParams(keys.map((_, "")), atomic)
     call("get_bulk", encoder, cp, params: _*).map { res =>
-      val tsv = parseTsv(res).toMap
-      val records = tsv.collect { case (k, v) if k.startsWith("_") => (k.tail, v) }
-      val num = tsv.get("num").map(_.toInt).getOrElse(0)
-      require(records.size == num)
-      records
+      retrieveArbitraryRecords(parseTsv(res).toMap)(identity)
     }
   }
 
@@ -152,6 +148,30 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
       step: Option[Int] = None, encoder: Encoder = Encoder.None)(
       implicit cp: CommonParams = CommonParams.empty): Try[Unit] = {
     call("vacuum", encoder, cp, step.map(("step", _)).toSeq: _*).map(_ => ())
+  }
+
+  def matchPrefix(prefix: String, max: Option[Int] = None, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams.empty): Try[Map[String, Int]] = {
+    val params = ("prefix", prefix) +: max.map(("max", _)).toSeq
+    call("match_prefix", encoder, cp, params: _*).map { res =>
+      retrieveArbitraryRecords(parseTsv(res).toMap)(_.toInt)
+    }
+  }
+
+  def matchRegex(regex: String, max: Option[Int] = None, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams.empty): Try[Map[String, Int]] = {
+    val params = ("regex", regex) +: max.map(("max", _)).toSeq
+    call("match_regex", encoder, cp, params: _*).map { res =>
+      retrieveArbitraryRecords(parseTsv(res).toMap)(_.toInt)
+    }
+  }
+
+  def matchSimilar(origin: String, range: Int = 1, utf: Boolean = false, max: Option[Int] = None, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams.empty): Try[Map[String, Int]] = {
+    val params = Seq(("origin", origin), ("range", range), ("utf", utf)) ++ max.map(("max", _))
+    call("match_similar", encoder, cp, params: _*).map { res =>
+      retrieveArbitraryRecords(parseTsv(res).toMap)(_.toInt)
+    }
   }
 
   private[this] def set[A](
@@ -195,6 +215,13 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
 
   private[this] def withPrefix[A](records: Seq[(String, A)]): Seq[(String, A)] =
     records.map { case (k, v) => (s"_$k", v) }
+
+  private[this] def retrieveArbitraryRecords[A, B](tsv: Map[String, A])(as: A => B): Map[String, B] = {
+    val records = tsv.collect { case (k, v) if k.startsWith("_") => (k.tail, as(v)) }
+    val num = tsv.get("num").map(_.toString.toInt).getOrElse(0)
+    require(records.size == num)
+    records
+  }
 
   private[this] def url(procedure: String): String = {
     s"$baseUrl/rpc/$procedure"

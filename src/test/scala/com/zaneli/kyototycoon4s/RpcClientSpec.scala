@@ -645,6 +645,7 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
       val res = client.getBulk(kvs.map(_._1): _*)(atomic = false)
       assert(res.isSuccess)
       res.foreach { records =>
+        assert(records.size === kvs.size)
         kvs.foreach { case (k, v) =>
           assert(records.get(k).contains(v))
         }
@@ -660,6 +661,118 @@ class RpcClientSpec extends FunSpec with ClientSpecBase {
     it("set step") {
       val res = client.vacuum(step = Some(1))
       assert(res.isSuccess)
+    }
+  }
+
+  describe("match_prefix") {
+    def prepareRecords(prefix: String): Seq[String] = {
+      val keys = (1 to 3).map { i =>
+        val k = asKey(s"$prefix$i")
+        val v = s"test_value_for_match_prefix_$i"
+        prepare(k, v)
+        k
+      }
+      prepare(asKey(s"other_prefix_$prefix"), "other_prefix_value")
+      keys
+    }
+    it("no params") {
+      val prefix = "test_key_for_match_prefix_"
+      val keys = prepareRecords(prefix)
+      val res = client.matchPrefix(prefix)
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === keys.size)
+        assert(records.keys.forall(keys.contains))
+      }
+    }
+    it("set max") {
+      val prefix = "test_key_for_match_prefix_set_max_"
+      val keys = prepareRecords(prefix)
+      val res = client.matchPrefix(prefix, max = Some(2))
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === 2)
+        assert(records.keys.forall(keys.contains))
+      }
+    }
+  }
+
+  describe("match_regex") {
+    def prepareRecords(prefix: String): Seq[String] = {
+      val key1 = asKey(s"$prefix a")
+      prepare(key1, "prepared_value")
+      val key2 = asKey(s"${prefix}xy")
+      prepare(key2, "prepared_value")
+      val key3 = asKey(s"$prefix b")
+      prepare(key3, "prepared_value")
+      val key4 = asKey(s"${prefix}12")
+      prepare(key4, "prepared_value")
+      Seq(key1, key2, key3, key4)
+    }
+    it("no params") {
+      val prefix = "test_key_for_match_regex_"
+      val keys = prepareRecords(prefix)
+      val res = client.matchRegex(prefix + """(\s)(\w)""", encoder = Encoder.Base64)
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === 2)
+        assert(records.keySet.contains(keys.head))
+        assert(records.keySet.contains(keys(2)))
+      }
+    }
+    it("set max") {
+      val prefix = "test_key_for_match_regex_set_max_"
+      val keys = prepareRecords(prefix)
+      val res = client.matchRegex(s"$prefix.+", encoder = Encoder.Base64, max = Some(2))
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === 2)
+        assert(records.keySet.contains(keys.head))
+        assert(records.keySet.contains(keys(1)))
+      }
+    }
+  }
+
+  describe("match_similar") {
+    def prepareRecords(origin: String): Seq[String] = {
+      val key1 = asKey(s"${origin}1")
+      prepare(key1, "prepared_value")
+      val key2 = asKey(s"${origin}12")
+      prepare(key2, "prepared_value")
+      val key3 = asKey(s"${origin.tail}")
+      prepare(key3, "prepared_value")
+      Seq(key1, key2, key3)
+    }
+    it("no params") {
+      val origin = "test_key_for_match_similar_"
+      val keys = prepareRecords(origin)
+      val res = client.matchSimilar(origin)
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === 2)
+        assert(records.keySet.contains(keys.head))
+        assert(records.keySet.contains(keys(2)))
+      }
+    }
+    it("set range") {
+      val origin = "test_key_for_match_similar_set_range_"
+      val keys = prepareRecords(origin)
+      val res = client.matchSimilar(origin, range = 2)
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === 3)
+        assert(keys.forall(records.keySet.contains))
+      }
+    }
+    it("set max") {
+      val origin = "test_key_for_match_similar_set_max_"
+      val keys = prepareRecords(origin)
+      val res = client.matchSimilar(origin, max = Some(1))
+      assert(res.isSuccess)
+      res.foreach { records =>
+        assert(records.size === 1)
+        assert(records.keySet.forall(keys.contains))
+      }
     }
   }
 
