@@ -174,6 +174,87 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
     }
   }
 
+  def curJump(cur: Int, key: Option[String] = None, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    checkCurAndCall("cur_jump", cur, encoder, cp).map(_ => ())
+  }
+
+  def curJumpBack(cur: Int, key: Option[String] = None, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    checkCurAndCall("cur_jump_back", cur, encoder, cp).map(_ => ())
+  }
+
+  def curStep(cur: Int, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    checkCurAndCall("cur_step", cur, encoder, cp).map(_ => ())
+  }
+
+  def curStepBack(cur: Int, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    checkCurAndCall("cur_step_back", cur, encoder, cp).map(_ => ())
+  }
+
+  def curSetValue(cur: Int, value: String, step: Boolean = false, xt: Option[Long] = None, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    val params = (("value", value) +: (if (step) Seq(("step", "")) else Nil)) ++ xt.map(("xt", _))
+    checkCurAndCall("cur_set_value", cur, encoder, cp, params: _*).map(_ => ())
+  }
+
+  def curRemove(cur: Int, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    checkCurAndCall("cur_remove", cur, encoder, cp).map(_ => ())
+  }
+
+  def curGetKey(cur: Int, step: Boolean = false, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[String] = {
+    val params = if (step) Seq(("step", "")) else Nil
+    checkCurAndCall("cur_get_key", cur, encoder, cp, params: _*).flatMap { res =>
+      val tsv = parseTsv(res).toMap
+      Try(tsv("key"))
+    }
+  }
+
+  def curGetValue(cur: Int, step: Boolean = false, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[String] = {
+    val params = if (step) Seq(("step", "")) else Nil
+    checkCurAndCall("cur_get_value", cur, encoder, cp, params: _*) flatMap { res =>
+      val tsv = parseTsv(res).toMap
+      Try(tsv("value"))
+    }
+  }
+
+  def curGet(cur: Int, step: Boolean = false, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[(String, String)] = {
+    val params = if (step) Seq(("step", "")) else Nil
+    checkCurAndCall("cur_get", cur, encoder, cp, params: _*) flatMap { res =>
+      val tsv = parseTsv(res).toMap
+      for {
+        k <- Try(tsv("key"))
+        v <- Try(tsv("value"))
+      } yield {
+        (k, v)
+      }
+    }
+  }
+
+  def curSeize(cur: Int, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[(String, String)] = {
+    checkCurAndCall("cur_seize", cur, encoder, cp) flatMap { res =>
+      val tsv = parseTsv(res).toMap
+      for {
+        k <- Try(tsv("key"))
+        v <- Try(tsv("value"))
+      } yield {
+        (k, v)
+      }
+    }
+  }
+
+  def curDelete(cur: Int, encoder: Encoder = Encoder.None)(
+    implicit cp: CommonParams = CommonParams(cur = Some(cur))): Try[Unit] = {
+    checkCurAndCall("cur_delete", cur, encoder, cp).map(_ => ())
+  }
+
   private[this] def set[A](
       procedure: String, key: String, value: A, xt: Option[Long], encoder: Option[Encoder], toBytes: A => Array[Byte], cp: CommonParams): Try[Unit] = {
     val params = Seq(("key", key), ("value", toBytes(value))) ++ xt.map(("xt", _))
@@ -226,6 +307,12 @@ class RpcClient private[kyototycoon4s] (private[this] val host: String, private[
   private[this] def url(procedure: String): String = {
     s"$baseUrl/rpc/$procedure"
   }
+
+  private[this] def checkCurAndCall(
+    procedure: String, cur: Int, encoder: Encoder, cp: CommonParams, params: (String, Any)*): Try[HttpResponse[String]] = Try {
+    require(cp.cur.contains(cur))
+    call(procedure, encoder, cp, params: _*)
+  }.flatten
 
   private[this] def call(
       procedure: String, encoder: Encoder, cp: CommonParams, params: (String, Any)*): Try[HttpResponse[String]] = {
