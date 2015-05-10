@@ -2,6 +2,10 @@ package com.zaneli.kyototycoon4s
 
 object KyotoTycoonClient {
 
+  def binary(host: String, port: Int = 1978): BinaryClient = {
+    new BinaryClient(host, port)
+  }
+
   def rest(host: String, port: Int = 1978): RestClient = {
     new RestClient(host, port)
   }
